@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تنظیمات - مدیریت کاتالوگ طرح‌های وکتوری</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .settings-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .settings-section h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        .form-row label {
+            min-width: 150px;
+            font-weight: 500;
+        }
+        
+        .form-row input, .form-row select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .form-row .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .backup-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        
+        .backup-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .backup-item:last-child {
+            border-bottom: none;
+        }
+        
+        .backup-info {
+            flex: 1;
+        }
+        
+        .backup-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .sync-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .sync-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .sync-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .sync-status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>⚙️ تنظیمات کاتالوگ</h1>
+                <div class="header-actions">
+                    <button id="backBtn" class="btn btn-outline">← بازگشت</button>
+                    <button id="saveBtn" class="btn btn-primary">💾 ذخیره</button>
+                    <button id="resetBtn" class="btn btn-outline">🔄 بازنشانی</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="settings-container">
+            <!-- تنظیمات پایگاه داده -->
+            <div class="settings-section">
+                <h3>🗄️ تنظیمات پایگاه داده</h3>
+                
+                <div class="form-row">
+                    <label>همگام‌سازی خودکار:</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="autoSync" checked>
+                        <span>فعال</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <label>فاصله همگام‌سازی:</label>
+                    <select id="syncInterval">
+                        <option value="10000">10 ثانیه</option>
+                        <option value="30000" selected>30 ثانیه</option>
+                        <option value="60000">1 دقیقه</option>
+                        <option value="300000">5 دقیقه</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <label>فاصله پشتیبان‌گیری:</label>
+                    <select id="backupInterval">
+                        <option value="1800000">30 دقیقه</option>
+                        <option value="3600000" selected>1 ساعت</option>
+                        <option value="7200000">2 ساعت</option>
+                        <option value="86400000">24 ساعت</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <label>حداکثر پشتیبان:</label>
+                    <input type="number" id="maxBackups" value="10" min="1" max="50">
+                </div>
+            </div>
+
+            <!-- تنظیمات پیش‌نمایش -->
+            <div class="settings-section">
+                <h3>🖼️ تنظیمات پیش‌نمایش</h3>
+                
+                <div class="form-row">
+                    <label>فعال‌سازی پیش‌نمایش:</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="previewEnabled" checked>
+                        <span>فعال</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <label>کیفیت پیش‌نمایش:</label>
+                    <select id="previewQuality">
+                        <option value="low">پایین</option>
+                        <option value="medium" selected>متوسط</option>
+                        <option value="high">بالا</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <label>اندازه پیش‌نمایش:</label>
+                    <input type="number" id="previewSize" value="200" min="50" max="500">
+                    <span>پیکسل</span>
+                </div>
+                
+                <div class="form-row">
+                    <label>مسیر ذخیره:</label>
+                    <input type="text" id="previewPath" value="~/Desktop/previews">
+                </div>
+            </div>
+
+            <!-- تنظیمات کدگذاری -->
+            <div class="settings-section">
+                <h3>🔢 تنظیمات کدگذاری</h3>
+                
+                <div class="form-row">
+                    <label>تولید خودکار کد:</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="autoGenerate" checked>
+                        <span>فعال</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <label>فرمت پیشوند:</label>
+                    <select id="prefixFormat">
+                        <option value="G####" selected>G0001</option>
+                        <option value="G###">G001</option>
+                        <option value="G##">G01</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <label>شماره شروع:</label>
+                    <input type="number" id="startNumber" value="1" min="1">
+                </div>
+            </div>
+
+            <!-- تنظیمات چینش -->
+            <div class="settings-section">
+                <h3>📐 تنظیمات چینش</h3>
+                
+                <div class="form-row">
+                    <label>فاصله پیش‌فرض:</label>
+                    <input type="number" id="defaultSpacing" value="150" min="50" max="500">
+                    <span>پیکسل</span>
+                </div>
+                
+                <div class="form-row">
+                    <label>ردیف پیش‌فرض:</label>
+                    <input type="number" id="defaultRows" value="2" min="1" max="10">
+                </div>
+                
+                <div class="form-row">
+                    <label>ستون پیش‌فرض:</label>
+                    <input type="number" id="defaultCols" value="3" min="1" max="10">
+                </div>
+                
+                <div class="form-row">
+                    <label>یادآوری آخرین چینش:</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="rememberLast" checked>
+                        <span>فعال</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- تنظیمات رابط کاربری -->
+            <div class="settings-section">
+                <h3>🎨 تنظیمات رابط کاربری</h3>
+                
+                <div class="form-row">
+                    <label>تم:</label>
+                    <select id="theme">
+                        <option value="auto" selected>خودکار</option>
+                        <option value="light">روشن</option>
+                        <option value="dark">تاریک</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <label>زبان:</label>
+                    <select id="language">
+                        <option value="fa" selected>فارسی</option>
+                        <option value="en">انگلیسی</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <label>نمایش Debug:</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="showDebug">
+                        <span>فعال</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <label>حالت فشرده:</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="compactMode">
+                        <span>فعال</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- همگام‌سازی -->
+            <div class="settings-section">
+                <h3>🔄 همگام‌سازی</h3>
+                
+                <div id="syncStatus" class="sync-status" style="display: none;"></div>
+                
+                <div class="form-row">
+                    <label>همگام‌سازی در شروع:</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="autoSyncOnStart" checked>
+                        <span>فعال</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <label>حل تعارض:</label>
+                    <select id="conflictResolution">
+                        <option value="ask" selected>پرسیدن</option>
+                        <option value="note">استفاده از Note</option>
+                        <option value="sqlite">استفاده از SQLite</option>
+                        <option value="merge">ادغام</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <label>پشتیبان قبل از همگام‌سازی:</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="backupBeforeSync" checked>
+                        <span>فعال</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <button id="syncNowBtn" class="btn btn-primary">🔄 همگام‌سازی اکنون</button>
+                    <button id="checkConflictsBtn" class="btn btn-outline">🔍 بررسی تعارضات</button>
+                </div>
+            </div>
+
+            <!-- پشتیبان‌گیری -->
+            <div class="settings-section">
+                <h3>💾 پشتیبان‌گیری</h3>
+                
+                <div class="form-row">
+                    <button id="createBackupBtn" class="btn btn-primary">📦 ایجاد پشتیبان</button>
+                    <button id="exportSettingsBtn" class="btn btn-outline">📤 خروجی تنظیمات</button>
+                    <button id="importSettingsBtn" class="btn btn-outline">📥 ورودی تنظیمات</button>
+                </div>
+                
+                <div class="form-row">
+                    <label>پشتیبان‌های موجود:</label>
+                </div>
+                
+                <div id="backupList" class="backup-list">
+                    <!-- پشتیبان‌ها اینجا نمایش داده می‌شوند -->
+                </div>
+            </div>
+
+            <!-- آمار سیستم -->
+            <div class="settings-section">
+                <h3>📊 آمار سیستم</h3>
+                
+                <div id="systemStats" class="stats-grid">
+                    <!-- آمار اینجا نمایش داده می‌شود -->
+                </div>
+                
+                <div class="form-row">
+                    <button id="cleanupBtn" class="btn btn-outline">🧹 پاک‌سازی</button>
+                    <button id="refreshStatsBtn" class="btn btn-outline">🔄 بروزرسانی آمار</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="importFile" accept=".json" style="display: none;">
+
+    <!-- Scripts -->
+    <script src="js/CSInterface.js"></script>
+    <script src="js/settings-manager.js"></script>
+    <script>
+        // Settings Page Controller
+        class SettingsController {
+            constructor() {
+                this.settingsManager = new SettingsManager();
+                this.initialize();
+            }
+            
+            initialize() {
+                this.loadSettings();
+                this.setupEventListeners();
+                this.loadBackupList();
+                this.loadSystemStats();
+            }
+            
+            loadSettings() {
+                // Database settings
+                document.getElementById('autoSync').checked = this.settingsManager.getSetting('database.autoSync');
+                document.getElementById('syncInterval').value = this.settingsManager.getSetting('database.syncInterval');
+                document.getElementById('backupInterval').value = this.settingsManager.getSetting('database.backupInterval');
+                document.getElementById('maxBackups').value = this.settingsManager.getSetting('database.maxBackups');
+                
+                // Preview settings
+                document.getElementById('previewEnabled').checked = this.settingsManager.getSetting('preview.enabled');
+                document.getElementById('previewQuality').value = this.settingsManager.getSetting('preview.quality');
+                document.getElementById('previewSize').value = this.settingsManager.getSetting('preview.size');
+                document.getElementById('previewPath').value = this.settingsManager.getSetting('preview.path');
+                
+                // Coding settings
+                document.getElementById('autoGenerate').checked = this.settingsManager.getSetting('coding.autoGenerate');
+                document.getElementById('prefixFormat').value = this.settingsManager.getSetting('coding.prefixFormat');
+                document.getElementById('startNumber').value = this.settingsManager.getSetting('coding.startNumber');
+                
+                // Arrange settings
+                document.getElementById('defaultSpacing').value = this.settingsManager.getSetting('arrange.defaultSpacing');
+                document.getElementById('defaultRows').value = this.settingsManager.getSetting('arrange.defaultRows');
+                document.getElementById('defaultCols').value = this.settingsManager.getSetting('arrange.defaultCols');
+                document.getElementById('rememberLast').checked = this.settingsManager.getSetting('arrange.rememberLast');
+                
+                // UI settings
+                document.getElementById('theme').value = this.settingsManager.getSetting('ui.theme');
+                document.getElementById('language').value = this.settingsManager.getSetting('ui.language');
+                document.getElementById('showDebug').checked = this.settingsManager.getSetting('ui.showDebug');
+                document.getElementById('compactMode').checked = this.settingsManager.getSetting('ui.compactMode');
+                
+                // Sync settings
+                document.getElementById('autoSyncOnStart').checked = this.settingsManager.getSetting('sync.autoSyncOnStart');
+                document.getElementById('conflictResolution').value = this.settingsManager.getSetting('sync.conflictResolution');
+                document.getElementById('backupBeforeSync').checked = this.settingsManager.getSetting('sync.backupBeforeSync');
+            }
+            
+            saveSettings() {
+                // Database settings
+                this.settingsManager.setSetting('database.autoSync', document.getElementById('autoSync').checked);
+                this.settingsManager.setSetting('database.syncInterval', parseInt(document.getElementById('syncInterval').value));
+                this.settingsManager.setSetting('database.backupInterval', parseInt(document.getElementById('backupInterval').value));
+                this.settingsManager.setSetting('database.maxBackups', parseInt(document.getElementById('maxBackups').value));
+                
+                // Preview settings
+                this.settingsManager.setSetting('preview.enabled', document.getElementById('previewEnabled').checked);
+                this.settingsManager.setSetting('preview.quality', document.getElementById('previewQuality').value);
+                this.settingsManager.setSetting('preview.size', parseInt(document.getElementById('previewSize').value));
+                this.settingsManager.setSetting('preview.path', document.getElementById('previewPath').value);
+                
+                // Coding settings
+                this.settingsManager.setSetting('coding.autoGenerate', document.getElementById('autoGenerate').checked);
+                this.settingsManager.setSetting('coding.prefixFormat', document.getElementById('prefixFormat').value);
+                this.settingsManager.setSetting('coding.startNumber', parseInt(document.getElementById('startNumber').value));
+                
+                // Arrange settings
+                this.settingsManager.setSetting('arrange.defaultSpacing', parseInt(document.getElementById('defaultSpacing').value));
+                this.settingsManager.setSetting('arrange.defaultRows', parseInt(document.getElementById('defaultRows').value));
+                this.settingsManager.setSetting('arrange.defaultCols', parseInt(document.getElementById('defaultCols').value));
+                this.settingsManager.setSetting('arrange.rememberLast', document.getElementById('rememberLast').checked);
+                
+                // UI settings
+                this.settingsManager.setSetting('ui.theme', document.getElementById('theme').value);
+                this.settingsManager.setSetting('ui.language', document.getElementById('language').value);
+                this.settingsManager.setSetting('ui.showDebug', document.getElementById('showDebug').checked);
+                this.settingsManager.setSetting('ui.compactMode', document.getElementById('compactMode').checked);
+                
+                // Sync settings
+                this.settingsManager.setSetting('sync.autoSyncOnStart', document.getElementById('autoSyncOnStart').checked);
+                this.settingsManager.setSetting('sync.conflictResolution', document.getElementById('conflictResolution').value);
+                this.settingsManager.setSetting('sync.backupBeforeSync', document.getElementById('backupBeforeSync').checked);
+                
+                this.showMessage('تنظیمات با موفقیت ذخیره شد', 'success');
+            }
+            
+            setupEventListeners() {
+                document.getElementById('saveBtn').addEventListener('click', () => this.saveSettings());
+                document.getElementById('resetBtn').addEventListener('click', () => this.resetSettings());
+                document.getElementById('backBtn').addEventListener('click', () => this.goBack());
+                
+                document.getElementById('syncNowBtn').addEventListener('click', () => this.performSync());
+                document.getElementById('checkConflictsBtn').addEventListener('click', () => this.checkConflicts());
+                
+                document.getElementById('createBackupBtn').addEventListener('click', () => this.createBackup());
+                document.getElementById('exportSettingsBtn').addEventListener('click', () => this.exportSettings());
+                document.getElementById('importSettingsBtn').addEventListener('click', () => this.importSettings());
+                
+                document.getElementById('cleanupBtn').addEventListener('click', () => this.cleanup());
+                document.getElementById('refreshStatsBtn').addEventListener('click', () => this.loadSystemStats());
+                
+                document.getElementById('importFile').addEventListener('change', (e) => this.handleImportFile(e));
+            }
+            
+            async performSync() {
+                this.showMessage('در حال همگام‌سازی...', 'info');
+                
+                try {
+                    const result = await this.settingsManager.performSync();
+                    
+                    if (result.success) {
+                        this.showMessage('همگام‌سازی با موفقیت انجام شد', 'success');
+                        if (result.conflicts && result.conflicts.length > 0) {
+                            this.showMessage(`${result.conflicts.length} تعارض یافت شد`, 'warning');
+                        }
+                    } else {
+                        this.showMessage('خطا در همگام‌سازی: ' + result.error, 'error');
+                    }
+                } catch (error) {
+                    this.showMessage('خطا در همگام‌سازی: ' + error.message, 'error');
+                }
+            }
+            
+            async createBackup() {
+                this.showMessage('در حال ایجاد پشتیبان...', 'info');
+                
+                try {
+                    const result = await this.settingsManager.createBackup();
+                    
+                    if (result.success) {
+                        this.showMessage('پشتیبان با موفقیت ایجاد شد', 'success');
+                        this.loadBackupList();
+                    } else {
+                        this.showMessage('خطا در ایجاد پشتیبان: ' + result.error, 'error');
+                    }
+                } catch (error) {
+                    this.showMessage('خطا در ایجاد پشتیبان: ' + error.message, 'error');
+                }
+            }
+            
+            loadBackupList() {
+                const backups = this.settingsManager.getBackupList();
+                const backupList = document.getElementById('backupList');
+                
+                if (backups.length === 0) {
+                    backupList.innerHTML = '<div style="text-align: center; color: #6c757d; padding: 20px;">هیچ پشتیبانی یافت نشد</div>';
+                    return;
+                }
+                
+                backupList.innerHTML = backups.map(backup => `
+                    <div class="backup-item">
+                        <div class="backup-info">
+                            <div style="font-weight: 500;">${new Date(backup.timestamp).toLocaleString('fa-IR')}</div>
+                            <div style="font-size: 12px; color: #6c757d;">نسخه ${backup.version}</div>
+                        </div>
+                        <div class="backup-actions">
+                            <button class="btn btn-small btn-primary" onclick="settingsController.restoreBackup('${backup.key}')">بازیابی</button>
+                            <button class="btn btn-small btn-outline" onclick="settingsController.deleteBackup('${backup.key}')">حذف</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            loadSystemStats() {
+                const stats = this.settingsManager.getSystemStats();
+                const statsContainer = document.getElementById('systemStats');
+                
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.settings}</div>
+                        <div class="stat-label">تنظیمات</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.backups}</div>
+                        <div class="stat-label">پشتیبان</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${(stats.localStorage.used / 1024).toFixed(1)} KB</div>
+                        <div class="stat-label">استفاده شده</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${(stats.localStorage.available / 1024).toFixed(1)} KB</div>
+                        <div class="stat-label">موجود</div>
+                    </div>
+                `;
+            }
+            
+            showMessage(message, type) {
+                const statusDiv = document.getElementById('syncStatus');
+                statusDiv.textContent = message;
+                statusDiv.className = `sync-status ${type}`;
+                statusDiv.style.display = 'block';
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+            
+            resetSettings() {
+                if (confirm('آیا مطمئن هستید که می‌خواهید تمام تنظیمات را به حالت پیش‌فرض بازنشانی کنید؟')) {
+                    this.settingsManager.resetSettings();
+                    this.loadSettings();
+                    this.showMessage('تنظیمات بازنشانی شد', 'success');
+                }
+            }
+            
+            goBack() {
+                window.history.back();
+            }
+            
+            exportSettings() {
+                const settings = this.settingsManager.exportSettings();
+                const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `vector-catalog-settings-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            
+            importSettings() {
+                document.getElementById('importFile').click();
+            }
+            
+            handleImportFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        const result = this.settingsManager.importSettings(data);
+                        
+                        if (result.success) {
+                            this.loadSettings();
+                            this.showMessage('تنظیمات با موفقیت وارد شد', 'success');
+                        } else {
+                            this.showMessage('خطا در وارد کردن تنظیمات: ' + result.error, 'error');
+                        }
+                    } catch (error) {
+                        this.showMessage('خطا در خواندن فایل: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+            
+            async restoreBackup(backupKey) {
+                if (confirm('آیا مطمئن هستید که می‌خواهید از این پشتیبان بازیابی کنید؟')) {
+                    this.showMessage('در حال بازیابی...', 'info');
+                    
+                    try {
+                        const result = await this.settingsManager.restoreFromBackup(backupKey);
+                        
+                        if (result.success) {
+                            this.loadSettings();
+                            this.showMessage('بازیابی با موفقیت انجام شد', 'success');
+                        } else {
+                            this.showMessage('خطا در بازیابی: ' + result.error, 'error');
+                        }
+                    } catch (error) {
+                        this.showMessage('خطا در بازیابی: ' + error.message, 'error');
+                    }
+                }
+            }
+            
+            deleteBackup(backupKey) {
+                if (confirm('آیا مطمئن هستید که می‌خواهید این پشتیبان را حذف کنید؟')) {
+                    localStorage.removeItem(backupKey);
+                    this.loadBackupList();
+                    this.showMessage('پشتیبان حذف شد', 'success');
+                }
+            }
+            
+            async cleanup() {
+                if (confirm('آیا مطمئن هستید که می‌خواهید داده‌های قدیمی را پاک کنید؟')) {
+                    this.showMessage('در حال پاک‌سازی...', 'info');
+                    
+                    try {
+                        const result = this.settingsManager.cleanup();
+                        
+                        if (result.success) {
+                            this.loadBackupList();
+                            this.loadSystemStats();
+                            this.showMessage(result.message, 'success');
+                        } else {
+                            this.showMessage('خطا در پاک‌سازی: ' + result.error, 'error');
+                        }
+                    } catch (error) {
+                        this.showMessage('خطا در پاک‌سازی: ' + error.message, 'error');
+                    }
+                }
+            }
+        }
+        
+        // Initialize settings controller
+        let settingsController;
+        document.addEventListener('DOMContentLoaded', function() {
+            settingsController = new SettingsController();
+        });
+    </script>
+</body>
+</html>

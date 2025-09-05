@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست رفع مشکلات</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            padding: 20px;
+            text-align: center;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            max-width: 800px;
+            text-align: right;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #5a67d8;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: left;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 تست رفع مشکلات اکستنشن</h1>
+
+    <div class="test-section">
+        <h2>📊 وضعیت کلی</h2>
+        <div id="overallStatus">در حال بررسی...</div>
+        <button class="btn" onclick="runAllTests()">🔄 اجرای مجدد تست‌ها</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 تست SQLite</h2>
+        <div id="sqliteStatus">در حال بررسی...</div>
+        <div id="sqliteLog" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎨 تست ExtendScript</h2>
+        <div id="extendscriptStatus">در حال بررسی...</div>
+        <div id="extendscriptLog" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 لاگ‌های کنسول</h2>
+        <div id="consoleLog" class="log"></div>
+        <button class="btn" onclick="clearLogs()">🗑️ پاک کردن لاگ‌ها</button>
+    </div>
+
+    <script src="sql-wasm.js"></script>
+    <script src="js/CSInterface.js"></script>
+    <script src="js/sqliteBridge-fixed.js"></script>
+    
+    <script>
+        let testResults = {
+            sqlite: null,
+            extendscript: null,
+            overall: null
+        };
+
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        let consoleLogs = [];
+        
+        function addLog(type, message) {
+            const timestamp = new Date().toLocaleTimeString('fa-IR');
+            consoleLogs.push(`[${timestamp}] ${type}: ${message}`);
+            updateConsoleLog();
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog('LOG', args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog('ERROR', args.join(' '));
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLog('WARN', args.join(' '));
+        };
+
+        function updateConsoleLog() {
+            const logElement = document.getElementById('consoleLog');
+            logElement.innerHTML = consoleLogs.slice(-50).join('<br>');
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLogs() {
+            consoleLogs = [];
+            updateConsoleLog();
+        }
+
+        // Test SQLite
+        async function testSQLite() {
+            const statusElement = document.getElementById('sqliteStatus');
+            const logElement = document.getElementById('sqliteLog');
+            
+            try {
+                statusElement.innerHTML = '<span class="warning">⏳ در حال تست...</span>';
+                
+                // Initialize SQLite
+                const result = await initSQLite();
+                
+                if (result) {
+                    // Test basic operations
+                    const testDesign = {
+                        code: 'TEST001',
+                        type: 'گل',
+                        family_codes: ['TEST001'],
+                        tags: ['تست'],
+                        size: 'متوسط',
+                        era: 'جدید',
+                        desc: 'طرح تست',
+                        preview_path: '',
+                        created_at: new Date().toString()
+                    };
+                    
+                    // Add test design
+                    await addDesignToDB(testDesign);
+                    
+                    // Search for it
+                    const searchResult = await searchDesigns('TEST001');
+                    
+                    if (searchResult && searchResult.length > 0) {
+                        testResults.sqlite = true;
+                        statusElement.innerHTML = '<span class="success">✅ SQLite کار می‌کند</span>';
+                        logElement.innerHTML = 'SQLite با موفقیت راه‌اندازی شد و عملیات پایه کار می‌کند.';
+                    } else {
+                        testResults.sqlite = false;
+                        statusElement.innerHTML = '<span class="error">❌ SQLite مشکل دارد</span>';
+                        logElement.innerHTML = 'SQLite راه‌اندازی شد اما عملیات جستجو کار نمی‌کند.';
+                    }
+                } else {
+                    testResults.sqlite = false;
+                    statusElement.innerHTML = '<span class="error">❌ SQLite راه‌اندازی نشد</span>';
+                    logElement.innerHTML = 'خطا در راه‌اندازی SQLite.';
+                }
+            } catch (error) {
+                testResults.sqlite = false;
+                statusElement.innerHTML = '<span class="error">❌ خطا در SQLite</span>';
+                logElement.innerHTML = `خطا: ${error.message}`;
+            }
+        }
+
+        // Test ExtendScript
+        function testExtendScript() {
+            const statusElement = document.getElementById('extendscriptStatus');
+            const logElement = document.getElementById('extendscriptLog');
+            
+            if (typeof CSInterface === 'undefined') {
+                testResults.extendscript = false;
+                statusElement.innerHTML = '<span class="error">❌ CSInterface موجود نیست</span>';
+                logElement.innerHTML = 'CSInterface یافت نشد - محیط CEP موجود نیست.';
+                return;
+            }
+            
+            try {
+                statusElement.innerHTML = '<span class="warning">⏳ در حال تست...</span>';
+                
+                const cs = new CSInterface();
+                
+                // Test basic ExtendScript
+                const script = `
+                    try {
+                        var result = {
+                            success: true,
+                            message: "تست ExtendScript موفق",
+                            appVersion: app.version,
+                            documentsCount: app.documents.length
+                        };
+                        JSON.stringify(result);
+                    } catch (e) {
+                        JSON.stringify({
+                            success: false,
+                            error: e.message
+                        });
+                    }
+                `;
+                
+                cs.evalScript(script, (result) => {
+                    try {
+                        if (!result || result.trim() === '') {
+                            testResults.extendscript = false;
+                            statusElement.innerHTML = '<span class="error">❌ پاسخ خالی</span>';
+                            logElement.innerHTML = 'ExtendScript پاسخ خالی برگرداند.';
+                            return;
+                        }
+                        
+                        const response = JSON.parse(result);
+                        
+                        if (response.success) {
+                            testResults.extendscript = true;
+                            statusElement.innerHTML = '<span class="success">✅ ExtendScript کار می‌کند</span>';
+                            logElement.innerHTML = `ExtendScript با موفقیت کار می‌کند. نسخه Illustrator: ${response.appVersion}`;
+                        } else {
+                            testResults.extendscript = false;
+                            statusElement.innerHTML = '<span class="error">❌ خطا در ExtendScript</span>';
+                            logElement.innerHTML = `خطا در ExtendScript: ${response.error}`;
+                        }
+                    } catch (parseError) {
+                        testResults.extendscript = false;
+                        statusElement.innerHTML = '<span class="error">❌ خطا در تجزیه JSON</span>';
+                        logElement.innerHTML = `خطا در تجزیه پاسخ: ${parseError.message}`;
+                    }
+                });
+                
+            } catch (error) {
+                testResults.extendscript = false;
+                statusElement.innerHTML = '<span class="error">❌ خطا در تست</span>';
+                logElement.innerHTML = `خطا: ${error.message}`;
+            }
+        }
+
+        // Update overall status
+        function updateOverallStatus() {
+            const statusElement = document.getElementById('overallStatus');
+            
+            if (testResults.sqlite === null || testResults.extendscript === null) {
+                statusElement.innerHTML = '<span class="warning">⏳ در حال تست...</span>';
+                return;
+            }
+            
+            const passed = (testResults.sqlite ? 1 : 0) + (testResults.extendscript ? 1 : 0);
+            const total = 2;
+            
+            if (passed === total) {
+                testResults.overall = true;
+                statusElement.innerHTML = '<span class="success">✅ تمام تست‌ها موفق</span>';
+            } else if (passed > 0) {
+                testResults.overall = false;
+                statusElement.innerHTML = `<span class="warning">⚠️ ${passed}/${total} تست موفق</span>`;
+            } else {
+                testResults.overall = false;
+                statusElement.innerHTML = '<span class="error">❌ تمام تست‌ها ناموفق</span>';
+            }
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            console.log('شروع تست‌های رفع مشکلات...');
+            
+            // Reset results
+            testResults = {
+                sqlite: null,
+                extendscript: null,
+                overall: null
+            };
+            
+            updateOverallStatus();
+            
+            // Run tests
+            await testSQLite();
+            testExtendScript();
+            
+            // Update overall status after a delay
+            setTimeout(updateOverallStatus, 2000);
+        }
+
+        // Auto-run tests on load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(runAllTests, 1000);
+        });
+    </script>
+</body>
+</html>

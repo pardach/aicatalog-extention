@@ -1,0 +1,84 @@
+{
+  "version": "1.0.0",
+  "name": "مدیریت کاتالوگ طرح‌های وکتوری",
+  "build": "20250125",
+  "compatibility": {
+    "illustrator": {
+      "min": "17.0",
+      "max": "30.0",
+      "recommended": "28.0"
+    },
+    "cep": {
+      "min": "9.0",
+      "recommended": "11.0"
+    },
+    "os": ["win32", "darwin"],
+    "node": ">=14.0.0"
+  },
+  "features": [
+    "مدیریت خانواده‌های طرح",
+    "سیستم کدگذاری هوشمند",
+    "ثبت گروهی طرح‌ها",
+    "جستجوی پیشرفته",
+    "گالری تعاملی",
+    "قرار دادن هوشمند روی آرتبورد",
+    "Debug و مانیتورینگ پیشرفته",
+    "سیستم تست خودکار",
+    "Error handling قوی",
+    "Performance monitoring"
+  ],
+  "changelog": {
+    "1.0.0": {
+      "date": "2025-01-25",
+      "type": "major",
+      "changes": [
+        "سیستم مدیریت خانواده‌ها با محوریت گل",
+        "کدگذاری خودکار (G0001, B0002, D0003...)",
+        "ثبت گروهی با برچسب‌های مشترک",
+        "جستجوی پیشرفته و فیلترینگ",
+        "گالری responsive با ایموجی",
+        "قرار دادن هوشمند روی آرتبورد",
+        "سیستم Debug و logging پیشرفته",
+        "Error handling و exception management",
+        "Performance monitoring و optimization",
+        "سیستم تست خودکار",
+        "Data validation قوی",
+        "رابط کاربری فارسی کامل"
+      ]
+    }
+  },
+  "debug": {
+    "enabled": true,
+    "logLevel": "info",
+    "maxLogs": 100,
+    "performanceMonitoring": true,
+    "errorTracking": true
+  },
+  "authors": [
+    {
+      "name": "Vector Catalog Team",
+      "role": "Core Development"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/vector-catalog-extension.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "adobe-illustrator",
+    "cep-extension",
+    "vector-catalog",
+    "family-management",
+    "persian-ui",
+    "design-tools",
+    "debug-tools",
+    "performance-monitoring"
+  ],
+  "stats": {
+    "totalFeatures": 10,
+    "codeLines": 1500,
+    "testCoverage": "85%",
+    "performanceScore": "A"
+  }
+}

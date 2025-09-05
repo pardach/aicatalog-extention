@@ -1,0 +1,83 @@
+{
+  "development": {
+    "enabled": true,
+    "mode": "full",
+    "autoStart": true,
+    "debug": {
+      "console": true,
+      "logging": true,
+      "performance": true,
+      "errorTracking": true
+    }
+  },
+  "server": {
+    "port": 8206,
+    "autoStart": true,
+    "python": true,
+    "node": false
+  },
+  "cep": {
+    "debugPort": 9222,
+    "developmentMode": true,
+    "logging": {
+      "level": 0,
+      "enabled": true
+    },
+    "cef": {
+      "remoteDebugging": true,
+      "devTools": true,
+      "logging": true,
+      "userDataDir": "./cef-user-data"
+    }
+  },
+  "extendscript": {
+    "debug": true,
+    "toolkit": true,
+    "breakpoints": true
+  },
+  "registry": {
+    "PlayerDebugMode": "1",
+    "LogLevel": "0",
+    "ExtendScriptDebug": "1"
+  },
+  "access": {
+    "urls": {
+      "devAccess": "http://localhost:8206/dev-access.html",
+      "extension": "http://localhost:8206/index.html",
+      "devTools": "http://localhost:9222",
+      "cepExtension": "cep://com.yourcompany.newextension.panel/",
+      "testConnection": "http://localhost:8206/test-connection.html",
+      "debugPanel": "http://localhost:8206/debug-local.html"
+    }
+  },
+  "files": {
+    "manifest": "CSXS/manifest.xml",
+    "debug": ".debug",
+    "main": "index.html",
+    "server": {
+      "python": "start-debug-server.bat",
+      "node": "start-node-server.bat",
+      "complete": "setup-dev-environment.bat",
+      "quick": "launch-dev.bat"
+    },
+    "documentation": {
+      "main": "README.md",
+      "quick": "QUICK-START.md",
+      "debug": "DEBUG.md",
+      "dev": "DEV-MODE-README.md"
+    }
+  },
+  "features": {
+    "debugPanel": true,
+    "performanceMonitoring": true,
+    "errorNotifications": true,
+    "autoDevMode": true,
+    "chromeDevTools": true,
+    "extendScriptDebug": true,
+    "realTimeLogging": true,
+    "testSuite": true
+  },
+  "version": "1.0.0",
+  "lastUpdated": "2025-01-25",
+  "status": "ready"
+}

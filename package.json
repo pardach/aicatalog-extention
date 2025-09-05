@@ -1,0 +1,91 @@
+{
+  "name": "new-illustrator-extension",
+  "version": "1.0.0",
+  "description": "اکستنشن جدید Adobe Illustrator - ساختار پایه",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'CEP extensions are built by copying files to the extensions directory'",
+    "dev": "echo 'For development, copy the extension folder to Adobe CEP extensions directory'",
+    "package": "echo 'Package the extension for distribution'",
+    "install:win": "install.bat",
+    "install:mac": "chmod +x install.sh && sudo ./install.sh",
+    "test": "node test-runner.js",
+    "lint": "eslint js/*.js --fix || echo 'ESLint not installed'",
+    "docs": "jsdoc js/*.js -d docs/api || echo 'JSDoc not installed'"
+  },
+  "keywords": [
+    "adobe",
+    "illustrator",
+    "cep",
+    "extension",
+    "persian",
+    "farsi"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/new-illustrator-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/new-illustrator-extension/issues"
+  },
+  "homepage": "https://github.com/your-username/new-illustrator-extension#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "cep": {
+    "version": "11.0",
+    "hosts": {
+      "ILST": {
+        "version": "[17.0,30.0]",
+        "name": "Adobe Illustrator"
+      }
+    },
+    "requiredRuntime": {
+      "name": "CSXS",
+      "version": "11.0"
+    },
+    "extension": {
+      "id": "com.yourcompany.newextension.panel",
+      "version": "1.0.0",
+      "name": "اکستنشن جدید"
+    }
+  },
+  "compatibility": {
+    "illustrator": {
+      "min": "2017",
+      "max": "2025",
+      "versions": [
+        "17.0",
+        "18.0",
+        "19.0",
+        "20.0",
+        "21.0",
+        "22.0",
+        "23.0",
+        "24.0",
+        "25.0",
+        "26.0",
+        "27.0",
+        "28.0",
+        "29.0"
+      ]
+    },
+    "cep": {
+      "min": "9.0",
+      "recommended": "11.0"
+    },
+    "os": [
+      "win32",
+      "darwin"
+    ]
+  },
+  "features": [
+    "پنل پایه",
+    "ارتباط با Illustrator",
+    "رابط کاربری فارسی"
+  ]
+}

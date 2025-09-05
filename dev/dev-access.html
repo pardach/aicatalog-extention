@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دسترسی سریع Developer Tools</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .tool-icon {
+            font-size: 3em;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .tool-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .tool-desc {
+            color: #6c757d;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .tool-url {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .status-online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .quick-actions {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .quick-actions h2 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .action-btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+            transition: background 0.3s;
+        }
+
+        .action-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ Developer Tools Access</h1>
+            <p>دسترسی سریع به تمام ابزارهای توسعه و Debug</p>
+        </div>
+
+        <div class="quick-actions">
+            <h2>⚡ دسترسی سریع</h2>
+            <div class="action-buttons">
+                <a href="debug-local.html" class="action-btn" target="_blank">📊 Debug Panel</a>
+                <a href="test-connection.html" class="action-btn" target="_blank">🔍 تست اتصال</a>
+                <a href="index.html" class="action-btn" target="_blank">📱 اکستنشن لوکال</a>
+                <a href="cep://com.yourcompany.newextension.panel/" class="action-btn" target="_blank">🎨 CEP Extension</a>
+                <a href="http://localhost:9222" class="action-btn" target="_blank">🛠️ Chrome DevTools</a>
+            </div>
+        </div>
+
+        <div class="tools-grid">
+            <div class="tool-card">
+                <div class="tool-icon">📊</div>
+                <div class="tool-title">Debug Panel</div>
+                <div class="tool-desc">پنل debug اصلی با نمایش real-time logها</div>
+                <div class="tool-url">http://localhost:8206/debug-local.html</div>
+                <a href="debug-local.html" class="btn" target="_blank">باز کردن</a>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-icon">🔍</div>
+                <div class="tool-title">تست اتصال</div>
+                <div class="tool-desc">بررسی وضعیت اتصال سرور لوکال</div>
+                <div class="tool-url">http://localhost:8206/test-connection.html</div>
+                <a href="test-connection.html" class="btn" target="_blank">باز کردن</a>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-icon">📱</div>
+                <div class="tool-title">اکستنشن لوکال</div>
+                <div class="tool-desc">اکستنشن در حالت development لوکال</div>
+                <div class="tool-url">http://localhost:8206/index.html</div>
+                <a href="index.html" class="btn" target="_blank">باز کردن</a>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-icon">🎨</div>
+                <div class="tool-title">CEP Extension</div>
+                <div class="tool-desc">اکستنشن اصلی در محیط CEP Illustrator</div>
+                <div class="tool-url">cep://com.yourcompany.newextension.panel/</div>
+                <a href="cep://com.yourcompany.newextension.panel/" class="btn" target="_blank">باز کردن</a>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-icon">🛠️</div>
+                <div class="tool-title">Chrome DevTools</div>
+                <div class="tool-desc">کنسول CEP و ExtendScript debugger</div>
+                <div class="tool-url">http://localhost:9222</div>
+                <a href="http://localhost:9222" class="btn" target="_blank">باز کردن</a>
+                <div class="status status-offline" id="devtools-status">در حال بررسی...</div>
+            </div>
+
+                    <div class="tool-card">
+            <div class="tool-icon">⚙️</div>
+            <div class="tool-title">ExtendScript Console</div>
+            <div class="tool-desc">کنسول ExtendScript در Illustrator</div>
+            <div class="tool-url">Window → Utilities → ExtendScript Toolkit</div>
+            <button class="btn" onclick="alert('در Illustrator از منوی Window → Utilities → ExtendScript Toolkit استفاده کنید')">راهنما</button>
+        </div>
+
+        <div class="tool-card">
+            <div class="tool-icon">📚</div>
+            <div class="tool-title">راهنمای Development</div>
+            <div class="tool-desc">مستندات کامل Development Mode</div>
+            <div class="tool-url">DEV-MODE-README.md</div>
+            <a href="DEV-MODE-README.md" class="btn" target="_blank">مطالعه</a>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        // Check Chrome DevTools status
+        async function checkDevToolsStatus() {
+            const statusEl = document.getElementById('devtools-status');
+            try {
+                const response = await fetch('http://localhost:9222/json');
+                if (response.ok) {
+                    statusEl.className = 'status status-online';
+                    statusEl.textContent = '✅ آنلاین - آماده استفاده';
+                } else {
+                    statusEl.className = 'status status-offline';
+                    statusEl.textContent = '❌ آفلاین - اکستنشن را باز کنید';
+                }
+            } catch (error) {
+                statusEl.className = 'status status-offline';
+                statusEl.textContent = '❌ آفلاین - سرور اجرا نشده';
+            }
+        }
+
+        // Check status on load and every 3 seconds
+        checkDevToolsStatus();
+        setInterval(checkDevToolsStatus, 3000);
+
+        // Check CEP status
+        setInterval(() => {
+            const cepCards = document.querySelectorAll('.tool-card');
+            cepCards.forEach(card => {
+                const btn = card.querySelector('.btn');
+                if (btn && btn.href.startsWith('cep://')) {
+                    const statusEl = card.querySelector('.status') || document.createElement('div');
+                    if (!card.querySelector('.status')) {
+                        statusEl.className = 'status';
+                        card.appendChild(statusEl);
+                    }
+
+                    if (typeof window.__adobe_cep__ !== 'undefined') {
+                        statusEl.className = 'status status-online';
+                        statusEl.textContent = '✅ CEP فعال';
+                    } else {
+                        statusEl.className = 'status status-offline';
+                        statusEl.textContent = '❌ CEP غیرفعال';
+                    }
+                }
+            });
+        }, 1000);
+    </script>
+</body>
+</html>

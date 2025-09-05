@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت کاتالوگ طرح‌های وکتوری</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>📚 کاتالوگ طرح‌های وکتوری</h1>
+                <div class="header-actions">
+                    <button id="addSelectionBtn" class="btn btn-primary">
+                        ➕ ثبت انتخاب
+                    </button>
+                    <button id="refreshBtn" class="btn btn-outline">
+                        🔄 بروزرسانی
+                    </button>
+                    <button id="updateSizesBtn" class="btn btn-outline" title="بروزرسانی اندازه‌های موجود">
+                        📏 اندازه‌ها
+                    </button>
+                    <button id="testConnectionBtn" class="btn btn-outline" title="تست اتصال به Illustrator">
+                        🔗 تست اتصال
+                    </button>
+                    <button id="syncBtn" class="btn btn-outline" title="همگام‌سازی">
+                        🔄 همگام‌سازی
+                    </button>
+                    <button id="exportBtn" class="btn btn-outline" title="Export">
+                        📤 Export
+                    </button>
+                    <button id="settingsBtn" class="btn btn-outline" title="تنظیمات">
+                        ⚙️ تنظیمات
+                    </button>
+                    <span id="status" class="status">آماده</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="search-section">
+                <input type="text" id="searchInput" placeholder="جستجو بر اساس کد، برچسب، خانواده..." class="search-input">
+                <button id="clearSearchBtn" class="btn btn-small">✕</button>
+            </div>
+            <div class="filter-section">
+                <select id="typeFilter" class="filter-select">
+                    <option value="">همه انواع</option>
+                    <option value="گل">گل</option>
+                    <option value="بنک">بنک</option>
+                    <option value="درزی">درزی</option>
+                    <option value="تک">تک</option>
+                    <option value="کپ گل">کپ گل</option>
+                </select>
+                <select id="familyFilter" class="filter-select">
+                    <option value="">همه خانواده‌ها</option>
+                </select>
+                <select id="sizeFilter" class="filter-select">
+                    <option value="">همه اندازه‌ها</option>
+                    <option value="کوچک">کوچک</option>
+                    <option value="متوسط">متوسط</option>
+                    <option value="بزرگ">بزرگ</option>
+                </select>
+                <select id="eraFilter" class="filter-select">
+                    <option value="">همه دوره‌ها</option>
+                    <option value="جدید">جدید</option>
+                    <option value="کمی جدید">کمی جدید</option>
+                    <option value="قدیمی">قدیمی</option>
+                    <option value="خیلی قدیمی">خیلی قدیمی</option>
+                </select>
+                <select id="sortFilter" class="filter-select">
+                    <option value="none">بدون مرتب‌سازی</option>
+                    <option value="size-asc">کوچک به بزرگ</option>
+                    <option value="size-desc">بزرگ به کوچک</option>
+                    <option value="date-desc">جدیدترین</option>
+                    <option value="date-asc">قدیمی‌ترین</option>
+                </select>
+            </div>
+            <div class="debug-section">
+                <button id="debugToggleBtn" class="btn btn-outline btn-small" title="Debug Panel">
+                    🐛
+                </button>
+                <button id="runTestsBtn" class="btn btn-outline btn-small" title="Run Tests">
+                    🧪
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h4>👨‍👩‍👧‍👦 خانواده‌ها</h4>
+                    <div id="familyList" class="family-list">
+                        <!-- خانواده‌ها اینجا نمایش داده می‌شوند -->
+                    </div>
+                </div>
+                <div class="sidebar-section">
+                    <h4>🏷️ برچسب‌ها</h4>
+                    <div class="tag-section">
+                        <div class="tag-input-group">
+                            <button id="addTagBtn" class="btn btn-small" title="برچسب جدید">➕</button>
+                            <input type="text" id="newTagInput" placeholder="برچسب جدید" class="tag-input">
+                        </div>
+                        <div id="tagContainer" class="tag-container">
+                            <!-- برچسب‌ها اینجا نمایش داده می‌شوند -->
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Gallery -->
+            <div class="gallery-container">
+                <div class="gallery-header">
+                    <h3 id="galleryTitle">همه طرح‌ها</h3>
+                    <div class="gallery-nav">
+                        <button id="showAllBtn" class="btn btn-small">همه</button>
+                        <button id="showFavoritesBtn" class="btn btn-small">⭐ علاقه‌مندی‌ها</button>
+                        <button id="showRecentsBtn" class="btn btn-small">🕒 اخیر</button>
+                    </div>
+                    <span id="itemCount" class="item-count">0 آیتم</span>
+                </div>
+                <div class="gallery-actions">
+                    <button id="selectAllBtn" class="btn btn-small">انتخاب همه</button>
+                    <button id="clearSelectionBtn" class="btn btn-small">پاک کردن انتخاب</button>
+                    <button id="connectToFamilyBtn" class="btn btn-outline" title="اتصال به خانواده">👨‍👩‍👧‍👦 اتصال به خانواده</button>
+                    <button id="batchEditBtn" class="btn btn-outline" title="ویرایش گروهی">✏️ ویرایش گروهی</button>
+                    <button id="placeSelectedBtn" class="btn btn-primary">قرار دادن انتخاب شده‌ها</button>
+                    <span id="selectionCount" class="selection-count">0 انتخاب شده</span>
+                </div>
+                <div id="gallery" class="gallery">
+                    <!-- طرح‌ها اینجا نمایش داده می‌شوند -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Detail Modal -->
+        <div id="detailModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">جزئیات طرح</h3>
+                    <button id="closeModalBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- جزئیات طرح اینجا نمایش داده می‌شود -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Registration Modal -->
+        <div id="batchModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>ثبت گروهی طرح‌ها</h3>
+                    <button id="closeBatchModalBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="batch-form">
+                        <div class="form-group">
+                            <label>نوع طرح‌ها:</label>
+                            <select id="batchType" class="form-select">
+                                <option value="گل">گل</option>
+                                <option value="بنک">بنک</option>
+                                <option value="درزی">درزی</option>
+                                <option value="تک">تک</option>
+                                <option value="کپ گل">کپ گل</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>خانواده‌ها (اختیاری):</label>
+                            <div id="batchFamilies" class="family-checkboxes">
+                                <!-- چک‌باکس خانواده‌ها اینجا نمایش داده می‌شود -->
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>برچسب‌های مشترک:</label>
+                            <div id="batchTagSelector" class="tag-selector">
+                                <!-- برچسب‌ها برای انتخاب اینجا نمایش داده می‌شوند -->
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div style="color: #6c757d; font-size: 12px; margin-top: 5px;">
+                                📏 اندازه به صورت اتوماتیک محاسبه می‌شود
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>دوره زمانی:</label>
+                            <select id="batchEra" class="form-select">
+                                <option value="جدید">جدید</option>
+                                <option value="کمی جدید">کمی جدید</option>
+                                <option value="قدیمی">قدیمی</option>
+                                <option value="خیلی قدیمی">خیلی قدیمی</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancelBatchBtn" class="btn btn-outline">لغو</button>
+                    <button id="confirmBatchBtn" class="btn btn-primary">ثبت گروهی</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connect to Family Modal -->
+        <div id="familyConnectModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>اتصال به خانواده</h3>
+                    <button id="closeFamilyConnectModalBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>انتخاب خانواده‌هایی که طرح‌های انتخاب شده باید به آن‌ها متصل شوند:</p>
+                    <div id="familySelectionList" class="family-selection-list">
+                        <!-- خانواده‌ها اینجا نمایش داده می‌شوند -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancelFamilyConnectBtn" class="btn btn-outline">لغو</button>
+                    <button id="confirmFamilyConnectBtn" class="btn btn-primary">اتصال</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Design Modal -->
+        <div id="editDesignModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="editModalTitle">ویرایش طرح</h3>
+                    <button id="closeEditDesignModalBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="edit-design-form">
+                        <div class="form-group">
+                            <label>کد:</label>
+                            <input type="text" id="editCodeInput" readonly class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>نوع:</label>
+                            <input type="text" id="editTypeInput" readonly class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>برچسب‌ها:</label>
+                            <div id="editTagsContainer" class="tag-editor">
+                                <!-- برچسب‌ها اینجا نمایش داده می‌شوند -->
+                            </div>
+                            <input type="text" id="editNewTagInput" placeholder="برچسب جدید" class="form-input" style="margin-top: 8px;">
+                            <button id="addEditTagBtn" class="btn btn-small" style="margin-top: 4px;">افزودن برچسب</button>
+                        </div>
+                        <div class="form-group">
+                            <label>خانواده‌ها:</label>
+                            <div id="editFamiliesContainer" class="family-editor">
+                                <!-- خانواده‌ها اینجا نمایش داده می‌شوند -->
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>اندازه:</label>
+                            <select id="editSizeSelect" class="form-select">
+                                <option value="کوچک">کوچک</option>
+                                <option value="متوسط">متوسط</option>
+                                <option value="بزرگ">بزرگ</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>دوره زمانی:</label>
+                            <select id="editEraSelect" class="form-select">
+                                <option value="جدید">جدید</option>
+                                <option value="کمی جدید">کمی جدید</option>
+                                <option value="قدیمی">قدیمی</option>
+                                <option value="خیلی قدیمی">خیلی قدیمی</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>توضیحات:</label>
+                            <textarea id="editDescTextarea" class="form-textarea" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancelEditDesignBtn" class="btn btn-outline">لغو</button>
+                    <button id="confirmEditDesignBtn" class="btn btn-primary">ذخیره تغییرات</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Edit Modal -->
+        <div id="batchEditModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>ویرایش گروهی</h3>
+                    <button id="closeBatchEditModalBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="batch-edit-form">
+                        <div class="form-group">
+                            <label>برچسب‌های جدید (جدا با کاما):</label>
+                            <input type="text" id="batchTagsInput" placeholder="برچسب1, برچسب2" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>خانواده‌های جدید:</label>
+                            <div id="batchFamilySelection" class="family-checkboxes">
+                                <!-- چک‌باکس خانواده‌ها اینجا نمایش داده می‌شود -->
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>اندازه:</label>
+                            <select id="batchSizeSelect" class="form-select">
+                                <option value="">بدون تغییر</option>
+                                <option value="کوچک">کوچک</option>
+                                <option value="متوسط">متوسط</option>
+                                <option value="بزرگ">بزرگ</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>دوره زمانی:</label>
+                            <select id="batchEraSelect" class="form-select">
+                                <option value="">بدون تغییر</option>
+                                <option value="جدید">جدید</option>
+                                <option value="کمی جدید">کمی جدید</option>
+                                <option value="قدیمی">قدیمی</option>
+                                <option value="خیلی قدیمی">خیلی قدیمی</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancelBatchEditBtn" class="btn btn-outline">لغو</button>
+                    <button id="confirmBatchEditBtn" class="btn btn-primary">اعمال تغییرات</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Place Options Modal -->
+        <div id="placeModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>قرار دادن روی آرتبورد</h3>
+                    <button id="closePlaceModalBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="place-options">
+                        <button id="placeSingleBtn" class="btn btn-large">📍 قرار دادن تک</button>
+                        <button id="placeFamilyBtn" class="btn btn-large">👨‍👩‍👧‍👦 قرار دادن خانواده</button>
+                        <button id="placeMultipleBtn" class="btn btn-large">🔢 قرار دادن چندتایی</button>
+                    </div>
+                    <div class="arrange-options" style="display: none;">
+                        <h4>چینش:</h4>
+                        <select id="arrangeSelect" class="form-select">
+                            <option value="grid">شبکه‌ای</option>
+                            <option value="row">ردیفی</option>
+                            <option value="column">ستونی</option>
+                        </select>
+                        <div class="arrange-inputs">
+                            <input type="number" id="arrangeRows" placeholder="ردیف" min="1" max="10">
+                            <input type="number" id="arrangeCols" placeholder="ستون" min="1" max="10">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="sql-wasm.js"></script>
+    <script src="js/CSInterface.js"></script>
+    <script src="test-extendscript-json.js"></script>
+    <script src="js/test-connection.js"></script>
+    <script src="js/sqliteBridge-fixed.js"></script>
+    <script src="js/settings-manager.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

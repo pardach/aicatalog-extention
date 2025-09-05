@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   ExtensionBundleId="com.yourcompany.newextension"
+                   ExtensionBundleVersion="1.0.0"
+                   Version="11.0">
+
+  <ExtensionList>
+    <Extension Id="com.yourcompany.newextension.panel" Version="1.0.0"/>
+  </ExtensionList>
+
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="ILST" Version="[17.0,30.0]"/>
+    </HostList>
+    <LocaleList>
+      <Locale Code="All"/>
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="11.0"/>
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+
+  <DispatchInfoList>
+    <Extension Id="com.yourcompany.newextension.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./client/index.html</MainPath>
+          <ScriptPath>./host/script.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--enable-logging</Parameter>
+            <Parameter>--log-level=0</Parameter>
+            <Parameter>--enable-dev-tools</Parameter>
+            <Parameter>--remote-debugging-port=9222</Parameter>
+            <Parameter>--user-data-dir=./cef-user-data</Parameter>
+          </CEFCommandLine>
+        </Resources>
+
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+
+        <UI>
+          <Type>Panel</Type>
+          <Menu>مدیریت کاتالوگ طرح‌های وکتوری</Menu>
+          <Geometry>
+            <Size>
+              <Height>700</Height>
+              <Width>600</Width>
+            </Size>
+            <MinSize>
+              <Height>500</Height>
+              <Width>400</Width>
+            </MinSize>
+            <MaxSize>
+              <Height>1400</Height>
+              <Width>1200</Width>
+            </MaxSize>
+          </Geometry>
+          <Icons>
+            <Icon Type="Normal">./icons/normal.png</Icon>
+            <Icon Type="RollOver">./icons/rollover.png</Icon>
+            <Icon Type="DarkNormal">./icons/darknormal.png</Icon>
+            <Icon Type="DarkRollOver">./icons/darkrollover.png</Icon>
+          </Icons>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>
