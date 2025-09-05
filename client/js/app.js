@@ -220,6 +220,7 @@ class VectorCatalogExtension {
                 throw new Error('DOM یافت نشد. آیا صفحه کامل load شده؟');
             }
 
+            this.setupTabSystem();
             this.setupEventListeners();
             this.loadFavoritesFromStorage();
             this.loadRecentsFromStorage();
@@ -656,6 +657,80 @@ class VectorCatalogExtension {
         } catch (error) {
             return { error: error.message };
         }
+    }
+
+    // ========== TAB SYSTEM ==========
+
+    setupTabSystem() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabPanes = document.querySelectorAll('.tab-pane');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.getAttribute('data-tab');
+
+                // Remove active class from all buttons and panes
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabPanes.forEach(pane => pane.classList.remove('active'));
+
+                // Add active class to clicked button and corresponding pane
+                button.classList.add('active');
+                const targetPane = document.getElementById(`${targetTab}-tab`);
+                if (targetPane) {
+                    targetPane.classList.add('active');
+                }
+
+                // Update content based on active tab
+                this.updateTabContent(targetTab);
+            });
+        });
+
+        // Set default active tab
+        const defaultTab = document.querySelector('.tab-btn.active');
+        if (defaultTab) {
+            const targetTab = defaultTab.getAttribute('data-tab');
+            this.updateTabContent(targetTab);
+        }
+    }
+
+    updateTabContent(activeTab) {
+        switch (activeTab) {
+            case 'gallery':
+                // Refresh gallery if needed
+                this.updateUI();
+                break;
+            case 'families':
+                // Update families list
+                this.updateFamiliesList();
+                break;
+            case 'settings':
+                // Settings tab is static for now
+                break;
+        }
+    }
+
+    updateFamiliesList() {
+        const familiesList = document.getElementById('familyList');
+        if (!familiesList) return;
+
+        familiesList.innerHTML = '';
+
+        if (this.families.length === 0) {
+            familiesList.innerHTML = '<div class="no-data">هیچ خانوادهای یافت نشد</div>';
+            return;
+        }
+
+        this.families.forEach(family => {
+            const familyElement = document.createElement('div');
+            familyElement.className = 'family-item';
+            familyElement.textContent = family.name;
+            familyElement.addEventListener('click', () => {
+                this.filterByFamily(family.id);
+                // Switch to gallery tab
+                document.querySelector('[data-tab="gallery"]').click();
+            });
+            familiesList.appendChild(familyElement);
+        });
     }
 
     setupEventListeners() {

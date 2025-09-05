@@ -8,134 +8,136 @@
 </head>
 <body>
     <div id="app">
-        <!-- Header -->
+        <!-- Compact Header -->
         <header class="header">
             <div class="header-content">
-                <h1>📚 کاتالوگ طرح‌های وکتوری</h1>
+                <h1>📚 کاتالوگ</h1>
                 <div class="header-actions">
-                    <button id="addSelectionBtn" class="btn btn-primary">
-                        ➕ ثبت انتخاب
+                    <button id="addSelectionBtn" class="btn btn-primary btn-compact">
+                        ➕ ثبت
                     </button>
-                    <button id="refreshBtn" class="btn btn-outline">
-                        🔄 بروزرسانی
-                    </button>
-                    <button id="updateSizesBtn" class="btn btn-outline" title="بروزرسانی اندازه‌های موجود">
-                        📏 اندازه‌ها
-                    </button>
-                    <button id="testConnectionBtn" class="btn btn-outline" title="تست اتصال به Illustrator">
-                        🔗 تست اتصال
-                    </button>
-                    <button id="syncBtn" class="btn btn-outline" title="همگام‌سازی">
-                        🔄 همگام‌سازی
-                    </button>
-                    <button id="exportBtn" class="btn btn-outline" title="Export">
-                        📤 Export
-                    </button>
-                    <button id="settingsBtn" class="btn btn-outline" title="تنظیمات">
-                        ⚙️ تنظیمات
+                    <button id="refreshBtn" class="btn btn-outline btn-compact">
+                        🔄
                     </button>
                     <span id="status" class="status">آماده</span>
                 </div>
             </div>
         </header>
 
-        <!-- Toolbar -->
-        <div class="toolbar">
-            <div class="search-section">
-                <input type="text" id="searchInput" placeholder="جستجو بر اساس کد، برچسب، خانواده..." class="search-input">
-                <button id="clearSearchBtn" class="btn btn-small">✕</button>
-            </div>
-            <div class="filter-section">
-                <select id="typeFilter" class="filter-select">
-                    <option value="">همه انواع</option>
-                    <option value="گل">گل</option>
-                    <option value="بنک">بنک</option>
-                    <option value="درزی">درزی</option>
-                    <option value="تک">تک</option>
-                    <option value="کپ گل">کپ گل</option>
-                </select>
-                <select id="familyFilter" class="filter-select">
-                    <option value="">همه خانواده‌ها</option>
-                </select>
-                <select id="sizeFilter" class="filter-select">
-                    <option value="">همه اندازه‌ها</option>
-                    <option value="کوچک">کوچک</option>
-                    <option value="متوسط">متوسط</option>
-                    <option value="بزرگ">بزرگ</option>
-                </select>
-                <select id="eraFilter" class="filter-select">
-                    <option value="">همه دوره‌ها</option>
-                    <option value="جدید">جدید</option>
-                    <option value="کمی جدید">کمی جدید</option>
-                    <option value="قدیمی">قدیمی</option>
-                    <option value="خیلی قدیمی">خیلی قدیمی</option>
-                </select>
-                <select id="sortFilter" class="filter-select">
-                    <option value="none">بدون مرتب‌سازی</option>
-                    <option value="size-asc">کوچک به بزرگ</option>
-                    <option value="size-desc">بزرگ به کوچک</option>
-                    <option value="date-desc">جدیدترین</option>
-                    <option value="date-asc">قدیمی‌ترین</option>
-                </select>
-            </div>
-            <div class="debug-section">
-                <button id="debugToggleBtn" class="btn btn-outline btn-small" title="Debug Panel">
-                    🐛
-                </button>
-                <button id="runTestsBtn" class="btn btn-outline btn-small" title="Run Tests">
-                    🧪
-                </button>
-            </div>
-        </div>
+        <!-- Tab Navigation -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="gallery">
+                🖼️ گالری
+            </button>
+            <button class="tab-btn" data-tab="families">
+                👨‍👩‍👧‍👦 خانواده‌ها
+            </button>
+            <button class="tab-btn" data-tab="settings">
+                ⚙️ تنظیمات
+            </button>
+        </nav>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Sidebar -->
-            <aside class="sidebar">
-                <div class="sidebar-section">
-                    <h4>👨‍👩‍👧‍👦 خانواده‌ها</h4>
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Gallery Tab -->
+            <div id="gallery-tab" class="tab-pane active">
+                <!-- Compact Toolbar -->
+                <div class="toolbar">
+                    <div class="search-section">
+                        <input type="text" id="searchInput" placeholder="جستجو..." class="search-input">
+                        <button id="clearSearchBtn" class="btn btn-small">✕</button>
+                    </div>
+                    <div class="filter-section">
+                        <select id="typeFilter" class="filter-select">
+                            <option value="">نوع</option>
+                            <option value="گل">گل</option>
+                            <option value="بنک">بنک</option>
+                            <option value="درزی">درزی</option>
+                        </select>
+                        <select id="sizeFilter" class="filter-select">
+                            <option value="">اندازه</option>
+                            <option value="کوچک">کوچک</option>
+                            <option value="متوسط">متوسط</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Gallery Content -->
+                <div class="gallery-container">
+                    <div class="gallery-header">
+                        <h3 id="galleryTitle">همه طرح‌ها</h3>
+                        <div class="gallery-nav">
+                            <button id="showAllBtn" class="btn btn-small">همه</button>
+                            <button id="showFavoritesBtn" class="btn btn-small">⭐</button>
+                        </div>
+                        <span id="itemCount" class="item-count">0</span>
+                    </div>
+                    <div class="gallery-actions">
+                        <button id="selectAllBtn" class="btn btn-small">انتخاب همه</button>
+                        <button id="placeSelectedBtn" class="btn btn-primary btn-compact">قرار دادن</button>
+                        <span id="selectionCount" class="selection-count">0</span>
+                    </div>
+                    <div id="gallery" class="gallery">
+                        <!-- طرح‌ها اینجا نمایش داده می‌شوند -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Families Tab -->
+            <div id="families-tab" class="tab-pane">
+                <div class="families-content">
+                    <div class="families-header">
+                        <h3>مدیریت خانواده‌ها</h3>
+                        <button id="addFamilyBtn" class="btn btn-primary btn-compact">➕ خانواده جدید</button>
+                    </div>
                     <div id="familyList" class="family-list">
                         <!-- خانواده‌ها اینجا نمایش داده می‌شوند -->
                     </div>
-                </div>
-                <div class="sidebar-section">
-                    <h4>🏷️ برچسب‌ها</h4>
-                    <div class="tag-section">
-                        <div class="tag-input-group">
-                            <button id="addTagBtn" class="btn btn-small" title="برچسب جدید">➕</button>
-                            <input type="text" id="newTagInput" placeholder="برچسب جدید" class="tag-input">
-                        </div>
-                        <div id="tagContainer" class="tag-container">
-                            <!-- برچسب‌ها اینجا نمایش داده می‌شوند -->
-                        </div>
-                    </div>
-                </div>
-            </aside>
 
-            <!-- Gallery -->
-            <div class="gallery-container">
-                <div class="gallery-header">
-                    <h3 id="galleryTitle">همه طرح‌ها</h3>
-                    <div class="gallery-nav">
-                        <button id="showAllBtn" class="btn btn-small">همه</button>
-                        <button id="showFavoritesBtn" class="btn btn-small">⭐ علاقه‌مندی‌ها</button>
-                        <button id="showRecentsBtn" class="btn btn-small">🕒 اخیر</button>
+                    <div class="families-section">
+                        <h4>🏷️ برچسب‌ها</h4>
+                        <div class="tag-section">
+                            <div class="tag-input-group">
+                                <button id="addTagBtn" class="btn btn-small" title="برچسب جدید">➕</button>
+                                <input type="text" id="newTagInput" placeholder="برچسب جدید" class="tag-input">
+                            </div>
+                            <div id="tagContainer" class="tag-container">
+                                <!-- برچسب‌ها اینجا نمایش داده می‌شوند -->
+                            </div>
+                        </div>
                     </div>
-                    <span id="itemCount" class="item-count">0 آیتم</span>
-                </div>
-                <div class="gallery-actions">
-                    <button id="selectAllBtn" class="btn btn-small">انتخاب همه</button>
-                    <button id="clearSelectionBtn" class="btn btn-small">پاک کردن انتخاب</button>
-                    <button id="connectToFamilyBtn" class="btn btn-outline" title="اتصال به خانواده">👨‍👩‍👧‍👦 اتصال به خانواده</button>
-                    <button id="batchEditBtn" class="btn btn-outline" title="ویرایش گروهی">✏️ ویرایش گروهی</button>
-                    <button id="placeSelectedBtn" class="btn btn-primary">قرار دادن انتخاب شده‌ها</button>
-                    <span id="selectionCount" class="selection-count">0 انتخاب شده</span>
-                </div>
-                <div id="gallery" class="gallery">
-                    <!-- طرح‌ها اینجا نمایش داده می‌شوند -->
                 </div>
             </div>
-        </main>
+
+            <!-- Settings Tab -->
+            <div id="settings-tab" class="tab-pane">
+                <div class="settings-content">
+                    <div class="settings-section">
+                        <h4>🔗 اتصال</h4>
+                        <div class="settings-actions">
+                            <button id="testConnectionBtn" class="btn btn-outline">تست اتصال</button>
+                            <button id="syncBtn" class="btn btn-outline">همگام‌سازی</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h4>📊 مدیریت</h4>
+                        <div class="settings-actions">
+                            <button id="updateSizesBtn" class="btn btn-outline">بروزرسانی اندازه‌ها</button>
+                            <button id="exportBtn" class="btn btn-outline">Export</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h4>🛠️ توسعه</h4>
+                        <div class="settings-actions">
+                            <button id="debugToggleBtn" class="btn btn-outline">Debug</button>
+                            <button id="runTestsBtn" class="btn btn-outline">Tests</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Detail Modal -->
         <div id="detailModal" class="modal">
