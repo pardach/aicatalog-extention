@@ -733,6 +733,17 @@ class VectorCatalogExtension {
         });
     }
 
+    updateUI() {
+        try {
+            this.renderCatalog();
+            this.updateFamiliesList();
+            this.updateGallerySelection();
+            this.updateStatus('آماده');
+        } catch (error) {
+            this.log('خطا در بروزرسانی UI: ' + error.message, 'error', error);
+        }
+    }
+
     setupEventListeners() {
         // Header buttons
         const addSelectionBtn = document.getElementById('addSelectionBtn');
