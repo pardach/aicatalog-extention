@@ -86,8 +86,21 @@ var PardachDirectUpload = (function () {
         var autoSplit = mode === 'smart' && roots.length === 1 &&
             roots[0].typename === 'GroupItem';
         if (autoSplit) {
-            var direct = directGroupChildren(roots[0]);
-            autoSplit = direct.groups.length >= 2 && direct.ungrouped === 0;
+            var direct = directGroupChildren(roots[0]), parentName = String(roots[0].name || '');
+            var explicitFamily = /^(?:family|fam|خانواده|set|ست)[\\s:_-]*[a-z0-9_-]+/i.test(parentName) ||
+                /^(?:f)?[0-9]+$/i.test(parentName);
+            var memberPatternCount = 0, sharedCode = '', allSameCode = true;
+            for (var k = 0; k < direct.groups.length; k++) {
+                var childName = String(direct.groups[k].name || '');
+                var match = childName.match(/^([0-9]+)(?:r[0-9]*|g|k|b|d|t)$/i);
+                if (match) {
+                    memberPatternCount++;
+                    if (sharedCode && sharedCode !== match[1]) allSameCode = false;
+                    sharedCode = match[1];
+                }
+            }
+            autoSplit = direct.groups.length >= 2 && direct.ungrouped === 0 &&
+                (explicitFamily || (memberPatternCount === direct.groups.length && allSameCode));
         }
         var split = mode === 'children' || autoSplit;
         for (var i = 0; i < roots.length; i++) {
