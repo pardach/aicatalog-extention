@@ -146,7 +146,7 @@
         // Never upload against the old unsafe backend, which could modify a duplicate.
         try {
             var capabilities = await request('/api/designs/designs/upload-capabilities/', 'GET', null, state.access, false);
-            if (capabilities.insert_only !== true) throw new Error('insert_only is unavailable');
+            if (capabilities.insert_only !== true || capabilities.sha256_preflight !== true) throw new Error('secure upload capabilities are unavailable');
         } catch (_) {
             state.access = '';
             throw new Error('سرور هنوز به نسخه ایمن بارگذاری مستقیم ارتقا نیافته یا دسترسی بارگذاری ندارید.');
@@ -191,9 +191,9 @@
         var filename = safeName.replace(/\.svg$/i, '') + '.svg';
         var sha = crypto.createHash('sha256').update(bytes).digest('hex');
         status('در حال بررسی تکراری نبودن طرح…');
-        // Existing duplicate endpoint consumes a real file, not a SHA string.
+        // Hash-only preflight avoids uploading the full SVG twice.
         var preflight = await request('/api/designs/designs/check-duplicate/', 'POST',
-            multipart({}, bytes, filename), state.access, true);
+            jsonBody({file_hash: sha}), state.access, false);
         if (preflight.is_duplicate) {
             throw new Error('این فایل قبلاً ثبت شده است (شناسه ' +
                 (preflight.existing_design && preflight.existing_design.id || 'نامشخص') +
