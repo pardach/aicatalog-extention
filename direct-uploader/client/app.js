@@ -133,33 +133,38 @@ function normalizeDigits(value) {
     });
 }
 function suggestion(info) {
-    var original=String(info.name||'').trim(),name=original.replace(/\.(ai|svg)$/i,'').trim();
+    var original=String(info.name||'').trim(),name=original.replace(/\\.(ai|svg)$/i,'').trim();
     var parent=String(info.parent_name||'').trim(),family='',kind='';
-    var parentMatch=normalizeDigits(parent).match(/^(?:(?:family|fam|خانواده)[\s:_-]*)?([a-z0-9][a-z0-9_-]{0,119})$/i);
-    // Avoid turning arbitrary words into family keys.
-    if(parentMatch && (/^\d+$/.test(parentMatch[1]) || /^f\d+$/i.test(parentMatch[1]) ||
+    var parentMatch=normalizeDigits(parent).match(/^(?:(?:family|fam|خانواده)[\\s:_-]*)?([a-z0-9][a-z0-9_-]{0,119})$/i);
+    if(parentMatch && (/^\\d+$/.test(parentMatch[1]) || /^f\\d+$/i.test(parentMatch[1]) ||
         /^(?:family|fam|خانواده)/i.test(parent)))family=parentMatch[1];
-    var compact=normalizeDigits(name).match(/^(\d{1,10})(r\d*|k|g|b|t|d)$/i);
-    if(compact){
+    var compact=normalizeDigits(name).match(/^(\\d{1,10})(r\\d*|k|g|b|t|d)$/i);
+    if(compact) {
         family=compact[1];
-        var marker=compact[2].charAt(0).toLowerCase();
-        kind=({r:'rakab',k:'half_flower',g:'flower',b:'benook',t:'tek',d:'darzi'})[marker]||'';
+        kind=({r:'rakab',k:'half_flower',g:'flower',b:'benook',t:'tek',d:'darzi'})[
+            compact[2].charAt(0).toLowerCase()]||'';
     }
-    var note=String(info.source_note||''),noteMetadata={};
-    if(note.charAt(0)==='{')try{noteMetadata=JSON.parse(note)||{};}catch(_){}
-    if(noteMetadata.family_key&&/^[a-z0-9][a-z0-9_-]{0,119}$/i.test(noteMetadata.family_key))
-        family=normalizeDigits(noteMetadata.family_key);
-    if(noteMetadata.design_kind && KIND_LABELS.some(function(k){return k[0]===noteMetadata.design_kind;}))
-        kind=noteMetadata.design_kind;
-    if(kind==='tool')family='';
     var unnamed=!name||/^<.*group.*>$/i.test(name)||/^طرح [0-9۰-۹٠-٩]+$/i.test(name);
     var generatedCode=state.batchCode+'-'+String(info.id||'x').replace(/[^a-z0-9]/ig,'_');
+    var fallbackCode=unnamed?(info.symbol_name||generatedCode):name;
+    var fallbackTitle=unnamed?(info.symbol_name||'طرح '+info.id):name;
+    var adapter=window.PardachLegacyAdapter;
+    if(!adapter) throw Error('ماژول سازگاری کاتالوگ قدیمی بارگذاری نشده است');
+    var legacy=adapter.fromSelection(info,{title:fallbackTitle,code:fallbackCode,
+        kind:kind,family:family,tags:[]});
     return {
-        id:info.id,name:original,title:String(noteMetadata.title||(unnamed?'طرح '+info.id:name)||'طرح').slice(0,255),
-        code:String(noteMetadata.code||(unnamed?generatedCode:name)||info.id).slice(0,160),
-        kind:kind,family:family,tags:String(noteMetadata.tags||''),description:String(
-            noteMetadata.description||(note.charAt(0)==='{'?'':note)||'').slice(0,2000),
-        collection:String(noteMetadata.collection||''),rating:'',label:'',
+        id:info.id,name:original,
+        title:(legacy.title||fallbackTitle).slice(0,255),
+        code:(legacy.code||fallbackCode).slice(0,160),
+        kind:legacy.kind||kind,
+        family:legacy.family||family,
+        family_codes:legacy.family_codes||[],
+        tags:(legacy.tags||[]).join('، '),
+        content_tags:legacy.content_tags||[],
+        description:legacy.description||'',
+        collection:legacy.collection||'',
+        era:legacy.era||'',rating:legacy.rating,label:legacy.label||'',
+        legacy_source:legacy.source||'selection',legacy_warnings:legacy.warnings||[],
         width_mm:info.width_mm,height_mm:info.height_mm,signature:info.signature,
         parent_name:parent,checked:true,status:'pending',error:''
     };
@@ -181,7 +186,11 @@ function validate(item) {
     if(!item.title.trim()||!item.code.trim()||!item.kind)return 'نام، کد و نوع طرح لازم است';
     if(item.kind==='flower'&&!item.family.trim())return 'برای گل، کد خانواده لازم است';
     if(item.family && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/.test(item.family))return 'کد خانواده نامعتبر است';
-    if(item.kind==='tool' && item.family)return 'ابزار مستقل است؛ خانواده باید خالی باشد';
+    if(item.kind==='tool' && (item.family||item.family_codes.length))
+        return 'ابزار مستقل است؛ هیچ کد خانواده نباید داشته باشد';
+    if(item.family_codes.length>50)return 'بیش از ۵۰ خانواده برای یک طرح پشتیبانی نمی‌شود';
+    if(item.family_codes.some(function(k){return !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/.test(k);}))
+        return 'یک یا چند کد خانواده معتبر نیست';
     if(item.title.length>255||item.code.length>160)return 'نام یا کد بیش از حد طولانی است';
     return '';
 }
@@ -238,14 +247,30 @@ function row(item) {
         ' mm | '+(item.parent_name?'خانواده/گروه: '+item.parent_name+' | ':'')+item.id));
     var fields=element('div','linefields');
     selectField(fields,'نوع',item.kind,function(v){item.kind=v;if(v==='tool')item.family='';render();});
-    inputField(fields,'کد خانواده',item.family,function(v){item.family=normalizeDigits(v.trim());},120);
+    inputField(fields,'خانواده اصلی',item.family,function(v){
+        item.family=normalizeDigits(v.trim());
+        if(item.kind==='tool'){item.family='';item.family_codes=[];}
+        else if(item.family){item.family_codes=[item.family].concat(
+            (item.family_codes||[]).filter(function(code){return code!==item.family;}));}
+    },120);
     card.appendChild(fields);
     var details=element('div','details');details.hidden=true;
+    inputField(details,'سایر خانواده‌ها (با ویرگول)',(item.family_codes||[])
+        .filter(function(v){return v!==item.family;}).join('، '),function(v){
+        var additional=v.split(/[,،;]/).map(function(x){
+            return window.PardachLegacyAdapter.normalizedFamily(x);
+        }).filter(Boolean);
+        item.family_codes=Array.from(new Set([item.family].concat(additional).filter(Boolean)));
+    },500);
     inputField(details,'نام کامل',item.title,function(v){item.title=v;title.textContent=v;},255);
     inputField(details,'کد/شناسه طرح',item.code,function(v){item.code=v;},160);
     inputField(details,'برچسب‌ها (ویرگول)',item.tags,function(v){item.tags=v;},400);
     inputField(details,'کالکشن',item.collection,function(v){item.collection=v;},120);
     inputField(details,'شرح طرح',item.description,function(v){item.description=v;},2000);
+    if(item.legacy_source==='legacy_symbol_note'||item.legacy_source==='symbol_note')
+        details.appendChild(element('div','mini','اطلاعات از Symbol Note کاتالوگ قدیمی خوانده شده است.'));
+    if(item.legacy_warnings.length)
+        details.appendChild(element('div','mini','هشدار Note: '+item.legacy_warnings.join(', ')));
     card.appendChild(details);
     expand.disabled=state.busy;
     expand.addEventListener('click',function(){
@@ -277,8 +302,12 @@ function bulkApply(){
     var changed=0;
     state.items.forEach(function(item){
         if(!item.checked||item.status==='done')return;
-        if(kind){item.kind=kind;if(kind==='tool')item.family='';}
-        if(family&&item.kind!=='tool')item.family=family;
+        if(kind){item.kind=kind;if(kind==='tool'){item.family='';item.family_codes=[];}}
+        if(family&&item.kind!=='tool'){
+            item.family=family;
+            item.family_codes=[family].concat((item.family_codes||[])
+                .filter(function(code){return code!==family;}));
+        }
         if(tags)item.tags=Array.from(new Set((item.tags+','+tags).split(/[,،]/)
             .map(function(s){return s.trim();}).filter(Boolean))).join('، ');
         if(collection)item.collection=collection;changed++;
@@ -319,10 +348,14 @@ function safeTempRead(tempPath) {
 function meta(item,filename){
     return {file_name:filename,title:item.title.trim(),code:item.code.trim(),
         design_kind:item.kind,family_key:item.family.trim(),
+        family_codes:item.kind==='tool'?[]:Array.from(new Set(
+            [item.family].concat(item.family_codes||[]).filter(Boolean))),
         width:Math.round(item.width_mm*100)/1000,
         height:Math.round(item.height_mm*100)/1000,unit:'cm',
         keywords:[],content_tags:item.tags.split(/[,،]/).map(function(s){return s.trim();}).filter(Boolean).slice(0,20),
         collection:item.collection.trim(),description:item.description.trim(),
+        era:item.era||'',rating:item.rating,label:item.label,
+        legacy_source:item.legacy_source||'selection',
         source:'illustrator-direct-uploader'};
 }
 function buildPrepared(item,result){
