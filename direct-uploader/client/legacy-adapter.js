@@ -79,6 +79,7 @@
         var description=clean(raw.description || raw.desc || base.description,2000);
         var collection=clean(raw.collection_key || raw.collection || base.collection,120);
         var era=clean(raw.era,80);
+        var legacyCreated=clean(raw.created_at || raw.created,100);
         var rating=raw.rating===undefined?raw.xmp_rating:raw.rating;
         rating=(rating===undefined||rating===null||rating==='')?null:Number(rating);
         if(rating!==null && (!isFinite(rating)||rating<0||rating>5))rating=null;
@@ -86,7 +87,8 @@
         return {
             title:title,code:code,kind:type,family:families[0]||'',
             family_codes:families,tags:tags,content_tags:contentTags,
-            description:description,collection:collection,era:era,rating:rating,
+            description:description,collection:collection,era:era,
+            legacy_created_at:legacyCreated,rating:rating,
             label:label,source:clean(raw.created_at?'legacy_symbol_note':(raw.code?'symbol_note':'selection'),50)
         };
     }
