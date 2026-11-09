@@ -3,6 +3,12 @@
  * within each design group remain together. Source artwork is never modified.
  */
 var PardachDirectUpload = (function () {
+    function asciiDigits(value) {
+        return String(value == null ? '' : value).replace(/[۰-۹٠-٩]/g, function(ch) {
+            var n = ch.charCodeAt(0);
+            return String(n >= 0x6F0 && n <= 0x6F9 ? n - 0x6F0 : n - 0x660);
+        });
+    }
     function quoted(s) {
         return '"' + String(s == null ? '' : s).replace(/\\/g, '\\\\')
             .replace(/"/g, '\\"').replace(/\r/g, '\\r')
@@ -86,12 +92,12 @@ var PardachDirectUpload = (function () {
         var autoSplit = mode === 'smart' && roots.length === 1 &&
             roots[0].typename === 'GroupItem';
         if (autoSplit) {
-            var direct = directGroupChildren(roots[0]), parentName = String(roots[0].name || '');
+            var direct = directGroupChildren(roots[0]), parentName = asciiDigits(roots[0].name || '');
             var explicitFamily = /^(?:family|fam|خانواده|set|ست)[\\s:_-]*[a-z0-9_-]+/i.test(parentName) ||
                 /^(?:f)?[0-9]+$/i.test(parentName);
             var memberPatternCount = 0, sharedCode = '', allSameCode = true;
             for (var k = 0; k < direct.groups.length; k++) {
-                var childName = String(direct.groups[k].name || '');
+                var childName = asciiDigits(direct.groups[k].name || '');
                 var match = childName.match(/^([0-9]+)(?:r[0-9]*|g|k|b|d|t)$/i);
                 if (match) {
                     memberPatternCount++;
