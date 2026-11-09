@@ -1,0 +1,92 @@
+<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بارگذاری سریع کاتالوگ | پرداچ</title>
+<style>
+:root { color-scheme:dark;font-family:Tahoma,Arial,sans-serif;font-size:12px }
+* { box-sizing:border-box }
+body { margin:0;padding:12px;color:#f1f3fa;background:#272b32;line-height:1.55 }
+h1 { margin:0 0 4px;font-size:16px } h2 { margin:0;font-size:13px }
+small,.hint {color:#adb8c8;font-size:11px} p{margin:5px 0 10px;color:#b8c2d1}
+section{padding:10px;border:1px solid #484f5e;border-radius:9px;margin-bottom:9px}
+label {display:block;margin:6px 0 3px}
+input,select,textarea {width:100%;min-width:0;background:#191d25;border:1px solid #5f6a7c;
+ color:#fff;border-radius:5px;padding:6px;font:inherit}
+textarea {resize:vertical}
+input:focus,select:focus,textarea:focus {outline:2px solid #79aeff}
+input[type=checkbox] {width:auto;min-width:16px;height:16px;vertical-align:middle}
+button{font:inherit;cursor:pointer;border:0;background:#477fe4;color:#fff;padding:7px 9px;border-radius:6px;min-height:30px}
+button.secondary{background:#475369} button.tiny{padding:3px 6px;min-height:24px;font-size:11px}
+button:disabled{opacity:.42;cursor:wait}
+.row{display:flex;gap:6px;align-items:center}.row>*{flex:1}
+.row .auto{flex:0 0 auto}
+.top{display:flex;gap:8px;align-items:center;justify-content:space-between}
+#status{white-space:pre-wrap;background:#141923;border-radius:6px;padding:8px;min-height:35px}
+#status.error{color:#ffa59f} #status.ok{color:#8de5aa}
+#summary{color:#9fdae4;margin:8px 0}
+#queue{max-height:365px;overflow-y:auto;scrollbar-width:thin}
+.design{border:1px solid #555e70;border-radius:7px;padding:7px;margin:5px 0;background:#292f3a}
+.design.error{border-color:#b46e6e}.design.done{border-color:#549377}
+.name{font-weight:bold;min-width:0;overflow-wrap:anywhere}.mini{font-size:10px;color:#b2bed0}
+.design .details{margin-top:7px;border-top:1px solid #515968;padding-top:7px}
+.design .linefields{display:grid;grid-template-columns: 1fr 1fr;gap:5px}
+.pager {display:flex;gap:6px;align-items:center;justify-content:center;padding:6px 0}
+.wide {width:100%} [hidden]{display:none!important} progress{width:100%;height:9px}
+</style></head>
+<body>
+<header><h1>پَرداچ | بارگذاری گروهی طرح‌ها</h1>
+<p>گروه خانواده را انتخاب کنید یا چندین گروه مستقل را باهم برای ارسال آماده کنید.</p></header>
+<section id="loginBox">
+<strong>اتصال به سرور</strong>
+<label for="server">سرور HTTPS</label><input id="server" value="https://pardach.ir" type="url" autocomplete="off">
+<div class="row"><div><label for="username">نام کاربری</label><input id="username" autocomplete="username"></div>
+<div><label for="password">رمز عبور</label><input id="password" type="password" autocomplete="current-password"></div></div>
+<button id="loginBtn" class="wide" style="margin-top:9px">ورود</button>
+<small>رمز و توکن ذخیره دائمی نمی‌شوند.</small>
+</section>
+<div id="uploadBox" hidden>
+<section><div class="top"><strong id="connectedAs">متصل</strong><button class="secondary tiny" id="logoutBtn">خروج</button></div>
+<label for="splitMode">چگونه گروه‌ها را به طرح تبدیل کنیم؟</label>
+<select id="splitMode">
+<option value="smart">هوشمند: خانواده را باز کن، طرح‌های مستقل را جدا کن</option>
+<option value="children">هر گروهِ فرزند در خانواده یک طرح</option>
+<option value="each">هر گروه انتخاب‌شده یک طرح</option>
+<option value="one">تمام انتخاب یک طرح</option>
+</select>
+<button class="secondary wide" id="inspectBtn" style="margin-top:8px">۱. خواندن و شمارش طرح‌ها</button>
+<div id="summary">هنوز طرحی بررسی نشده است.</div>
+<small>ساختار و اندازه هر طرح قبل از ارسال قابل بازبینی است؛ گروه‌های داخل هر طرح جدا نمی‌شوند.</small>
+</section>
+<section id="bulkBox" hidden>
+<div class="top"><h2>۲. ویرایش سریع اطلاعات</h2><span class="mini" id="checkedCount"></span></div>
+<div class="row" style="margin-top:6px"><button class="secondary tiny" id="checkAllBtn">انتخاب همه</button>
+<button class="secondary tiny" id="checkNoneBtn">لغو انتخاب</button>
+<button class="secondary tiny" id="retryBtn">فقط خطادارها</button></div>
+<div class="row"><div><label for="bulkKind">نوع طرح</label><select id="bulkKind">
+<option value="">تغییر نده</option><option value="flower">گل</option><option value="half_flower">کپ گل</option>
+<option value="rakab">رکب</option><option value="benook">بنوک</option><option value="darzi">درزی</option>
+<option value="tek">تک</option><option value="tool">ابزار</option></select></div>
+<div><label for="bulkFamily">خانواده</label><input id="bulkFamily" dir="ltr" placeholder="خالی = بدون تغییر"></div></div>
+<div class="row"><div><label for="bulkTags">برچسب‌ها</label><input id="bulkTags" placeholder="مثلث، بلوچی"></div>
+<div><label for="bulkCollection">مجموعه</label><input id="bulkCollection" placeholder="اختیاری"></div></div>
+<button class="secondary wide" style="margin-top:8px" id="applyBulkBtn">اعمال روی ردیف‌های انتخاب‌شده</button>
+<small>خالی گذاشتن هر فیلد، مقدار فعلی آن را حفظ می‌کند.</small>
+</section>
+<section id="listBox" hidden>
+<div class="top"><h2>۳. بررسی تک‌تک طرح‌ها</h2><span class="mini">نام، نوع، خانواده و اندازه</span></div>
+<div id="queue"></div>
+<div class="pager"><button class="secondary tiny" id="prevBtn">قبلی</button>
+<span id="pageInfo"></span><button class="secondary tiny" id="nextBtn">بعدی</button></div>
+</section>
+<section id="sendBox" hidden>
+<strong>۴. ارسال دسته‌ای به کاتالوگ</strong>
+<div class="row"><button id="uploadBtn" style="flex:3">ارسال طرح‌های انتخابی</button>
+<button class="secondary" id="cancelBtn" disabled>توقف بعد از دسته</button></div>
+<progress id="progress" max="1" value="0"></progress>
+<div class="mini" id="progressText">۰ طرح ارسال شده</div>
+<small>ارسال در بسته‌های کوچک انجام می‌شود؛ خطای یک طرح بقیه را متوقف نمی‌کند.</small>
+</section>
+</div>
+<div id="status" role="status" aria-live="polite">ابتدا به حساب پرداچ متصل شوید.</div>
+<script src="./client/app.js"></script>
+</body></html>
