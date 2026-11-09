@@ -345,7 +345,7 @@ async function submitChunk(chunk) {
     var files=[];
     prepared.forEach(function(p){
         if(preflight.duplicates && preflight.duplicates[p.hash]){
-            p.item.status='duplicate';p.item.error='شناسه '+preflight.duplicates[p.hash];
+            p.item.status='duplicate';p.item.error='این فایل قبلاً در کاتالوگ ثبت شده است';
         }else files.push(p);
     });
     if(!files.length)return;
