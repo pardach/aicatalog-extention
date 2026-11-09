@@ -73,9 +73,34 @@ var PardachDirectUpload = (function () {
     }
     function mm(v) { return Math.round(v * 25.4 / 72 * 1000) / 1000; }
     function describe(id, name, items, parentName, depth) {
-        var b = boundsFor(items), selected = items[0], note = '';
-        try { if (items.length === 1 && selected.note) note = String(selected.note); } catch (_) {}
-        return {id:id, name:String(name || id), source_note:note,
+        var b = boundsFor(items), selected = items[0], note = '', symbolName = '';
+        // Reuse the legacy catalog's *stored data*, not its eval-based parser.
+        // Illustrator Symbol Note belongs to the Symbol definition, not the
+        // SymbolItem instance. Preserve the source document unmodified.
+        try {
+            if(items.length === 1) {
+                if(selected.note) note=String(selected.note);
+                if(selected.typename === 'SymbolItem' && selected.symbol) {
+                    symbolName=String(selected.symbol.name || '');
+                    if(selected.symbol.note) note=String(selected.symbol.note);
+                } else if(selected.typename === 'GroupItem' && !note) {
+                    var symbolsFound=0, childSymbol=null;
+                    for(var n=0;n<selected.pageItems.length;n++) {
+                        var child=selected.pageItems[n];
+                        if(child.parent===selected && child.typename==='SymbolItem') {
+                            symbolsFound++;childSymbol=child.symbol;
+                        } else if(child.parent===selected) {
+                            symbolsFound+=2;break;
+                        }
+                    }
+                    if(symbolsFound===1 && childSymbol) {
+                        symbolName=String(childSymbol.name || '');
+                        if(childSymbol.note)note=String(childSymbol.note);
+                    }
+                }
+            }
+        } catch (_) {}
+        return {id:id, name:String(name || id), source_note:note.slice(0,24576),symbol_name:symbolName,
             parent_name:String(parentName || ''), depth:depth, item_count:items.length,
             width_mm:mm(b[2] - b[0]), height_mm:mm(b[1] - b[3]),
             signature:[mm(b[2] - b[0]),mm(b[1] - b[3]),String(name || id)].join(':'),
@@ -136,6 +161,7 @@ var PardachDirectUpload = (function () {
     }
     function describePublic(entry) {
         return {id:entry.id, name:entry.name, source_note:entry.source_note,
+            symbol_name:entry.symbol_name,
             parent_name:entry.parent_name, depth:entry.depth, item_count:entry.item_count,
             width_mm:entry.width_mm, height_mm:entry.height_mm, signature:entry.signature};
     }
