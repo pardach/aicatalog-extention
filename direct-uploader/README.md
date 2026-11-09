@@ -1,92 +1,137 @@
-# Pardach Direct Uploader — Illustrator CEP panel (MVP)
+# Pardach Direct Uploader — Bulk Illustrator Catalog Import
 
-A **separate, minimal panel** beside the existing Vector Catalog extension. It sends the
-current Illustrator selection directly to the **Pardach site catalog** without requiring
-the designer to export an SVG manually or upload through the browser.
+یک پنل **مستقل** در Illustrator برای انتخاب گروه‌ها، تکمیل اطلاعات تعداد زیادی طرح،
+ساخت SVG بدون دخالت کاربر، و ارسال امن دسته‌ای به کاتالوگ سایت پرداچ.
 
-## User flow (فارسی)
+این ماژول به افزونه قدیمی `Vector Catalog` و مخزن `setoffline` دست نمی‌زند.
+قرارداد سرور در PR مستقل زیر است:
 
-1. در Illustrator یک طرح یا چند شیء متعلق به یک طرح را انتخاب کنید.
-2. پنل **Window → Extensions → Pardach | ارسال مستقیم طرح** را باز کنید.
-3. به حساب سایت با دسترسی بارگذاری کاتالوگ وارد شوید.
-4. «خواندن انتخاب فعلی» را بزنید؛ نام و ابعاد محاسبه می‌شوند.
-5. نوع طرح و کد خانواده را انتخاب کنید (برای گل، خانواده الزامی است).
-6. «ارسال طرح انتخاب‌شده» را بزنید. خروجی SVG موقت به‌طور خودکار
-   در پوشهٔ Temp ساخته، به HTTPS ارسال و بلافاصله از روی سیستم پاک می‌شود.
-7. شناسهٔ ثبت‌شده نمایش داده می‌شود؛ وضعیت طرح پیش‌فرض **pending** است.
+[Backend PR #105](https://github.com/pardach/pardach/pull/105)
 
-اگر چند شیء هم‌زمان انتخاب کنید، همگی **یک طرح** محسوب می‌شوند؛
-در این نسخه ارسال تک‌تک گروه‌های انتخاب‌شده به صورت batch وجود ندارد.
+## چهار حالت انتخاب
 
-## Installation on Windows
+`Smart` (پیش‌فرض): گروه‌هایی که شواهد نام‌گذاری خانواده دارند
+(مثلاً `family_334`، `خانواده۳۳۴`، `334`، یا گروه‌های فرزند
+`334g`, `334r2`, `334k`) را به **گروه‌های عضو مستقیم** تقسیم می‌کند؛
+گروه تزئینی داخل یک طرح مستقل را بی‌دلیل نمی‌شکند.
 
-1. Clone this GitHub repository or download its ZIP.
-2. Run `direct-uploader/install-windows.bat` (without administrator privileges).
-3. Restart Illustrator and open the panel under Window → Extensions.
-4. If an **unsigned development extension** is blocked, follow Adobe CEP's
-   developer-mode procedure for your installed CSXS version. Do NOT expose the
-   debugging port in production. Production distribution should use a signed ZXP.
+`Children`: هر **گروه فرزند مستقیم** در هر گروه مادر انتخاب‌شده یک طرح می‌شود.
+اجزای داخل هر گروه فرزند، حتی اگر خودشان Group باشند، کنار هم می‌مانند.
+اگر گروه مادر در همان سطح artwork بدون گروه داشته باشد، به‌جای حذف بی‌صدا خطا می‌دهد.
 
-This component is isolated from the existing extension; installing it does not replace
-the existing panel.
+`Each`: هر یک از Groupهای انتخاب‌شده یک طرح؛ طرح‌های مستقل از
+خانواده‌های مختلف با هم ارسال می‌شوند.
 
-## Server requirements
+`One`: همه اشیای انتخابی فقط یک طرح هستند.
 
-- HTTPS with valid certificate. Default `https://pardach.ir`.
-- JWT login `POST /api/auth/login/`.
-- Permission `designs:bulk_upload` with business policy `can_upload_design_files`.
-- `POST /api/designs/designs/check-duplicate/` receives `file`.
-- `POST /api/designs/designs/batch-upload/` receives `files`, `design_kind`,
-  `family_key`, `metadata`, `default_status=pending`, `insert_only=1`.
-- **IMPORTANT:** A compatible backend must implement
-  `GET /api/designs/designs/upload-capabilities/` returning
-  `{"insert_only":true}` and atomically enforce insert-only duplicate behavior.
-  The panel must not upload against an old server that silently updates duplicate
-  records; use the paired backend PR for the `pardach/pardach` repo.
+نمونه واقعی:
 
-## Fidelity and limitations
+```text
+Illustrator selection:
+  family_334                  ← Group مادر
+      334g                    ← Group طرح گل، شامل چندین Path/Group
+      334k                    ← Group کپ گل
+      334r                    ← Group رکب
+      334r2                   ← Group رکب دوم
+  family_335                  ← یک خانواده دیگر
+      335g
+      335r
 
-- The source Illustrator document is not saved or changed; objects are duplicated
-  into a temporary Illustrator document and automatically exported to SVG.
-- Inline SVG can be edited as vectors. Fonts, Illustrator-only live effects,
-  transparency, symbols, pattern brushes, clipping masks, and linked assets require
-  real-app fidelity testing. For full round-tripping, a later phase should upload
-  both SVG and an AI source, associated with the same design ID.
-- Any external linked SVG references are rejected; embedded raster content is allowed.
-- Bounds are from `visibleBounds` (actual appearance, including strokes where
-  Illustrator reports them). If you need geometric bounds, extend the contract.
-- Exact selection width/height are sent as float **centimetres** in metadata;
-  the existing Django `Design.width/height` fields round to integer units, so
-  catalog list size labels may be approximate pending a schema migration. The
-  exported SVG retains its own vector dimensions.
-- This is currently **one-design-at-a-time** with 20 MiB client-side SVG cap.
+Smart mode → six individual SVG files, retaining parent family keys.
+Each mode → two SVG files (one for each selected family container).
+Children mode → six individual SVG files.
+One mode → one SVG with everything.
+```
 
-## Security
+تشخیص خودکار در مرحلهٔ **بازبینی** قابل تصحیح است. در نبود قرائن
+کافی، افزونه نوع طرح را خالی می‌گذارد تا کاربر تعیین کند.
 
-- The panel does not store passwords or JWTs in localStorage, files, or SQLite.
-- Node HTTPS requests verify TLS certificates and never follow redirects.
-- The server URL must be a clean HTTPS origin, without path, credentials, or query.
-- No remote script loading, CDN dependency, exposed remote debugger, or HTTP fallback.
-- A duplicate check prevents ordinary re-uploads; the backend `insert_only`
-  guarantee is required to prevent time-of-check/time-of-use races.
-- The app deliberately retains no refresh token; login is required again when
-  the panel reloads.
+## ویرایش متادیتا با حداقل کلیک
 
-## Acceptance tests (must be run on a real Illustrator + staging backend)
+- نام و کد طرح: از نام Group یا فیلد Note پیشنهادی (قابل ویرایش).
+- نوع: `flower`, `half_flower`, `rakab`, `benook`, `darzi`, `tek`, `tool`.
+- کد خانواده: برای هر طرح مستقل؛ از نام Group/خانواده و قالب
+  `334r2`, `334k`, `334g` پیشنهاد می‌شود.
+- برچسب‌ها، مجموعه و شرح: برای هر طرح قابل ویرایش.
+- اندازه واقعی: از `visibleBounds` در Illustrator به میلی‌متر محاسبه
+  و برای ثبت به سانتی‌متر تبدیل می‌شود؛ متادیتا اعشاری و فایل SVG حفظ می‌شوند.
+- تکمیل گروهی: چند ده/صد ردیف را انتخاب کنید، نوع یا برچسب را یک‌بار اعمال
+  کنید؛ اگر خانوادهٔ مشترک تعیین نشده، خانوادهٔ جداگانه هر ردیف تغییر نمی‌کند.
+- صفحه‌بندی ردیف‌ها: ۲۵ در هر صفحه، با انتخاب/ویرایش گروهی روی تمام ردیف‌ها.
+- نام‌گذاری با ارقام فارسی/عربی برای family key نیز شناخته می‌شود.
 
-- Login succeeds for authorized uploader; unauthorized user gets 403 from upload API.
-- One group, several selected paths, and an SVG with embedded image export correctly.
-- 10 mm by 10 mm artwork arrives at the correct scale in Setoffline; no silent scaling.
-- Network interruption never deletes local source artwork; temporary SVG is removed.
-- Uploading identical SVG twice does not mutate or overwrite the first record.
-- Uploaded family and design kind match the expected catalog.
-- Illustrator visual output vs generated SVG vs Setoffline canvas are visually compared.
-- No token or password appears in logs or on disk.
+## گردش ارسال
 
-## Roadmap
+1. در Illustrator خانواده یا گروه‌های موردنظر را انتخاب کنید.
+2. پس از ورود به سایت، حالت تفکیک را انتخاب و «خواندن و شمارش طرح‌ها» را بزنید.
+3. نوع، کد خانواده و برچسب‌ها را گروهی یا تک‌به‌تک تعیین کنید.
+4. طرح‌های انتخاب‌شده به ترتیب **گل اصلی، سپس اعضای دیگر** پردازش می‌شوند.
+5. فایل‌های موقت در بسته‌های حداکثر ۸تایی صادر می‌شوند.
+6. هش SHA-256 فایل‌ها یکجا بررسی می‌شود؛ فایل تکراری آپلود نمی‌شود.
+7. درخواست‌های `multipart/form-data` با JSON متادیتای جداگانهٔ هر فایل
+   تا سقف تقریبی ۱۲ مگابایت payload هر درخواست ارسال می‌شوند.
+8. وضعیت هر ردیف (ثبت‌شده، تکراری، خطادار) حفظ می‌شود.
+   توقف بعد از دسته جاری و انتخاب دوباره فقط خطادارها در دسترس است.
 
-1. MVP: one-click current selection → protected site catalog with metadata.
-2. Batch: one design per Illustrator group/layer and queue with retry.
-3. Preserve full native AI source and editable SVG; visual comparison and fingerprint.
-4. Site/Setoffline sync status shown in the panel, no duplicate family drift.
-5. Plan migration from CEP to Illustrator UXP when Adobe's Illustrator APIs are ready.
+فایل موقت **بلافاصله پس از خواندن** حذف می‌شود. سند Illustrator
+دستکاری یا ذخیره نمی‌شود. توکن در حافظه پنل است و پس از بارگیری مجدد
+پنل نگهداری نمی‌شود.
+
+## نصب Windows (نسخه توسعه)
+
+1. مخزن را دریافت کنید.
+2. `direct-uploader/install-windows.bat` را اجرا کنید.
+3. Illustrator را دوباره باز کنید و از
+   `Window → Extensions → Pardach | ارسال مستقیم طرح`
+   پنل را پیدا کنید.
+4. افزونه امضانشده ممکن است به تنظیمات developer mode همان نسخه CEP نیاز داشته باشد.
+   برای انتشار رسمی، ZXP امضاشده لازم است.
+
+## API و مجوزها
+
+- `POST /api/auth/login/`
+- `GET /api/designs/designs/upload-capabilities/` → `insert_only:true`,
+  `batch_sha256_preflight:true`
+- `POST /api/designs/designs/check-duplicates/`
+  → JSON `{"hashes":["<sha256>",...]}` (تا ۱۲۸ هش)
+- `POST /api/designs/designs/batch-upload/`
+  → multipart `files` چندگانه + `metadata` (آرایه با `file_name`) +
+  `insert_only=1` + `default_status=pending`.
+- کاربر باید مجوز `designs:bulk_upload` و سیاست کسب‌وکار
+  `can_upload_design_files` داشته باشد.
+
+**حتماً ابتدا PR سرور تست و روی staging مستقر شود.**
+پنل روی سرور ناسازگار ورود/آپلود را مسدود می‌کند.
+
+## محدودیت‌های نسخه آزمایشی
+
+- خروجی موقت Illustrator به SVG است؛ هنوز حفظ AI editable source در همان رکورد
+  و بازیابی کامل live effects / pattern brushes تضمین نشده است.
+- سقف بررسی یک انتخاب: ۱۰۰۰ طرح؛ سقف یک فایل SVG: ۲۰ MiB.
+- SVGهای محتوی منابع خارجی لینک‌شده پذیرفته نمی‌شوند؛ تصاویر باید Embedded باشند.
+- محتوا با `file_hash` یکتا است؛ اگر یک فایل دقیقاً یکسان را در چند خانواده
+  استفاده کنید، فعلاً سرور فقط یک Design برای آن hash ثبت می‌کند.
+- شناسه‌گذاری خودکار از **نام گروه** پیشنهاد می‌دهد؛ تشخیص مبهم بی‌اجازه قطعی نمی‌شود.
+- بررسی تکراری بودن قبلی و `insert_only` در Backend مانع overwrite عمدی می‌شوند؛
+  هم‌زمانی، خطای شبکه و عدم قطعیت پاسخ باید در staging تست شود.
+- در پایان ارسال، یک طرح دارای خطا لزوماً کل دسته را از کار نمی‌اندازد؛
+  هر فایل نتیجه جداگانه دارد.
+- فعلاً دسته‌بندی‌های پیچیده، AI source همراه SVG و مدیریت نسخه‌ها مرحله بعد است.
+
+## سناریوهای پذیرش (UAT)
+
+- [ ] یک خانواده با `گل، کپ گل، رکب، رکب۲` و Groupهای تو در تو.
+- [ ] انتخاب هم‌زمان ۳ خانواده: فقط اعضا جدا شوند، نه اجزای داخل هر عضو.
+- [ ] ۸۰ رکب از ۸۰ خانواده: اعمال گروهی نوع رکب بدون یکسان‌شدن family.
+- [ ] گروهی که فقط برای سایه/جزئیات طرح استفاده شده: Smart آن را نشکند.
+- [ ] طرح با کلیپینگ، متن، Symbol، Raster embedded، Pattern Brush و Transparency.
+- [ ] اندازه واقعی چند نمونه در Illustrator، SVG و بوم Setoffline تطبیق داده شود.
+- [ ] کاربر بدون مجوز نتواند بارگذاری کند؛ HTTPS غیرمعتبر رد شود.
+- [ ] فایل تکراری نتواند متادیتا یا طرح موجود شخص دیگر را تغییر دهد.
+- [ ] قطع اینترنت وسط یک دسته: طرح‌های قبلاً ثبت‌شده حفظ شوند و خطادارها قابل retry باشند.
+- [ ] هیچ فایل SVG موقت یا رمز/توکن دائمی باقی نماند.
+- [ ] تست Django:
+  `python manage.py test apps.designs.tests apps.designs.tests_direct_uploader`
+
+**وضعیت فعلی:** کدنویسی و تست منطقی ساختار گروه‌ها انجام شده؛
+اجرای تست‌های Adobe Illustrator واقعی، تست Django و استقرار سرور هنوز انجام نشده است.
