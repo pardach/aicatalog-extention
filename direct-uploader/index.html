@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ارسال مستقیم طرح - پرداچ</title>
+  <style>
+  :root { color-scheme: dark; font-family: Tahoma, Arial, sans-serif; }
+  body { background:#252830; color:#ecedf1; margin:0; padding:16px; font-size:13px; line-height:1.7 }
+  h1 { font-size:17px; margin:0 0 2px } p { color:#afb6c7; margin:0 0 15px }
+  section { border:1px solid #484d5b; border-radius:10px; padding:12px; margin:12px 0 }
+  label { display:block; margin:9px 0 4px; color:#dee1e8 }
+  input,select { box-sizing:border-box; width:100%; border:1px solid #656a79; border-radius:6px; background:#1b1d24; color:white; font-family:inherit; font-size:13px; padding:8px }
+  input:focus,select:focus { outline:2px solid #6aa8ff; border-color:#6aa8ff }
+  button { border:0; border-radius:7px; cursor:pointer; background:#477fe5; color:white; padding:9px 13px; font:inherit }
+  button.secondary { background:#454b5d } button:disabled { opacity:.45; cursor:wait }
+  .line { display:flex; gap:7px; align-items:center } .line>* { flex:1 }
+  .hint { color:#a6b4c9; font-size:11px } #status { white-space:pre-wrap; min-height:22px; padding:8px; border-radius:6px; background:#181a21 }
+  #status.error { color:#ffaaa4 } #status.ok { color:#83e2ac }
+  #dimensions { font-size:12px; color:#86d0dc } [hidden] { display:none!important }
+  </style>
+</head>
+<body>
+  <header><h1>ارسال مستقیم طرح به پرداچ</h1>
+    <p>طرح را در Illustrator انتخاب کنید؛ فایل SVG به‌طور موقت و خودکار ساخته و به سرور ارسال می‌شود.</p></header>
+  <section id="loginBox">
+    <strong>اتصال امن به حساب پرداچ</strong>
+    <label for="server">آدرس سرور HTTPS</label>
+    <input id="server" value="https://pardach.ir" type="url" autocomplete="off" spellcheck="false">
+    <label for="username">نام کاربری</label>
+    <input id="username" type="text" autocomplete="username">
+    <label for="password">رمز عبور</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <div class="line" style="margin-top:12px"><button id="loginBtn">ورود به سرور</button></div>
+    <small class="hint">رمز و توکن در فایل یا حافظه دائمی ذخیره نمی‌شوند. دسترسی بارگذاری طرح لازم است.</small>
+  </section>
+  <section id="uploadBox" hidden>
+    <div class="line"><strong id="connectedAs">متصل</strong><button class="secondary" id="logoutBtn">خروج</button></div>
+    <div class="line" style="margin-top:10px"><button class="secondary" id="inspectBtn">خواندن انتخاب فعلی</button></div>
+    <div id="dimensions">هنوز طرحی انتخاب نشده است.</div>
+    <label for="title">نام طرح</label><input id="title" maxlength="255">
+    <label for="code">کد طرح</label><input id="code" maxlength="160">
+    <label for="kind">نوع طرح</label>
+    <select id="kind">
+      <option value="">انتخاب کنید...</option><option value="flower">گل</option>
+      <option value="half_flower">کپ گل</option><option value="benook">بنوک</option>
+      <option value="darzi">درزی</option><option value="tek">تک</option><option value="tool">ابزار</option>
+    </select>
+    <label for="family">کد خانواده (برای گل الزامی)</label>
+    <input id="family" maxlength="120" dir="ltr" placeholder="مثلاً 334">
+    <label for="tags">برچسب‌ها (با ویرگول جدا شوند)</label><input id="tags" placeholder="بلوچی، گل، دوخت">
+    <button id="uploadBtn" style="width:100%; margin-top:14px">ارسال طرح انتخاب‌شده</button>
+    <small class="hint">در نسخه اول، همه آیتم‌های انتخاب‌شده یک طرح محسوب می‌شوند. اندازه از visible bounds برحسب میلی‌متر محاسبه می‌شود.</small>
+  </section>
+  <div id="status" role="status" aria-live="polite">آماده اتصال</div>
+  <script src="./client/app.js"></script>
+</body>
+</html>
