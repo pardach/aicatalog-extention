@@ -143,6 +143,14 @@
             jsonBody({username: username, password: pass}), '', false);
         if (!result.access) throw new Error('توکن دسترسی از سرور دریافت نشد');
         state.access = result.access;
+        // Never upload against the old unsafe backend, which could modify a duplicate.
+        try {
+            var capabilities = await request('/api/designs/designs/upload-capabilities/', 'GET', null, state.access, false);
+            if (capabilities.insert_only !== true) throw new Error('insert_only is unavailable');
+        } catch (_) {
+            state.access = '';
+            throw new Error('سرور هنوز به نسخه ایمن بارگذاری مستقیم ارتقا نیافته یا دسترسی بارگذاری ندارید.');
+        }
         state.username = username;
         ui('password').value = '';
         ui('connectedAs').textContent = 'متصل: ' + username;
@@ -197,6 +205,7 @@
         status('در حال ارسال امن SVG به سرور…');
         var fields = {
             default_status: 'pending',
+            insert_only: '1',
             design_kind: meta.design_kind,
             metadata: JSON.stringify(Object.assign({file_name: filename}, meta))
         };
