@@ -1,240 +1,429 @@
-/* Pardach Direct Upload / CEP Node.js transport.
- * HTTPS only, bearer tokens are memory-only. Never persist credentials.
- * Uses the existing Pardach catalog batch endpoint (not a new API).
+/* Pardach Direct Uploader - multilingual batch catalog import (CEP Node).
+ * One selected Illustrator family may contain individually classified child
+ * groups. No manual export, persistent secrets or remote dependencies.
  */
 (function () {
-    'use strict';
-    var ui = function (id) { return document.getElementById(id); };
-    var state = { server: '', access: '', username: '', busy: false, selection: null };
-    var https, fs, crypto;
-    try { https = require('https'); fs = require('fs'); crypto = require('crypto'); }
-    catch (_) { /* Runtime check below gives a human-readable error. */ }
-    function status(message, type) {
-        ui('status').textContent = message;
-        ui('status').className = type || '';
-    }
-    function busy(value) {
-        state.busy = value;
-        ['loginBtn', 'inspectBtn', 'uploadBtn'].forEach(function (id) { ui(id).disabled = value; });
-    }
-    function ensureServer(text) {
-        var url = new URL(String(text || '').trim());
-        if (url.protocol !== 'https:' || !url.hostname || url.username || url.password ||
-            url.search || url.hash || (url.pathname && url.pathname !== '/')) {
-            throw new Error('آدرس سرور باید فقط به صورت https://domain باشد.');
+'use strict';
+var $ = function (id) { return document.getElementById(id); };
+var https, fs, os, path, crypto;
+try {
+    https = require('https'); fs = require('fs'); os = require('os');
+    path = require('path'); crypto = require('crypto');
+} catch (_) {}
+var state = {server:'',access:'',username:'',items:[],mode:'smart',
+    docName:'',busy:false,cancelable:false,stop:false,page:0,sequence:0};
+var PAGE_SIZE = 25, EXPORT_SIZE = 8, MAX_BATCH_BYTES = 12 * 1024 * 1024;
+var KIND_LABELS = [
+    ['', 'نوع را انتخاب کنید'], ['flower','گل'], ['half_flower','کپ گل'],
+    ['rakab','رکب'], ['benook','بنوک'], ['darzi','درزی'],
+    ['tek','تک'], ['tool','ابزار']
+];
+function message(s, level) { $('status').textContent=String(s); $('status').className=level||''; }
+function setBusy(value) {
+    state.busy = value;
+    ['loginBtn','inspectBtn','applyBulkBtn','uploadBtn','checkAllBtn',
+     'checkNoneBtn','retryBtn','splitMode'].forEach(function(id){$(id).disabled=value;});
+}
+function normalizeServer(urlString) {
+    var u = new URL(String(urlString||'').trim());
+    if (u.protocol !== 'https:' || !u.hostname || u.username || u.password ||
+       u.search || u.hash || (u.pathname && u.pathname !== '/'))
+        throw Error('آدرس باید فقط دامنه HTTPS بدون مسیر یا اطلاعات ورود باشد');
+    return u.origin;
+}
+function http(pathPart, method, payload, access) {
+    return new Promise(function(resolve,reject){
+        var u=new URL(pathPart,state.server+'/'), origin=new URL(state.server);
+        if(u.protocol!=='https:'||u.origin!==origin.origin) return reject(Error('آدرس خارج از دامنه'));
+        var headers={Accept:'application/json'};
+        if(access) headers.Authorization='Bearer '+access;
+        if(payload) {
+            headers['Content-Type']=payload.type || 'application/json';
+            headers['Content-Length']=payload.data.length;
         }
-        return url.origin;
-    }
-    function request(path, method, payload, authHeader, isMultipart) {
-        return new Promise(function (resolve, reject) {
-            var dest = new URL(path, state.server + '/');
-            var base = new URL(state.server);
-            if (dest.origin !== base.origin || dest.protocol !== 'https:') {
-                return reject(new Error('درخواست خارج از دامنه مجاز مسدود شد'));
-            }
-            var headers = { 'Accept': 'application/json' };
-            if (authHeader) headers.Authorization = 'Bearer ' + authHeader;
-            if (payload) {
-                headers['Content-Type'] = isMultipart ? payload.type : 'application/json';
-                headers['Content-Length'] = payload.data.length;
-            }
-            var sent = https.request({
-                hostname: dest.hostname, port: dest.port || 443, path: dest.pathname + dest.search,
-                method: method, headers: headers, timeout: 30000,
-                rejectUnauthorized: true
-            }, function (res) {
-                var chunks = [], count = 0;
-                res.on('data', function (chunk) {
-                    count += chunk.length;
-                    if (count > 1048576) { res.destroy(new Error('پاسخ سرور بیش از حد بزرگ است')); return; }
-                    chunks.push(chunk);
-                });
-                res.on('end', function () {
-                    var body = Buffer.concat(chunks).toString('utf8');
-                    var parsed;
-                    try { parsed = JSON.parse(body); }
-                    catch (_) { return reject(new Error('پاسخ JSON معتبر نیست (HTTP ' + res.statusCode + ')')); }
-                    if (res.statusCode < 200 || res.statusCode >= 300) {
-                        var detail = parsed.detail || parsed.message || parsed.error || 'خطای سرور';
-                        if (typeof detail !== 'string') detail = JSON.stringify(detail).slice(0, 180);
-                        return reject(new Error('HTTP ' + res.statusCode + ': ' + detail));
-                    }
-                    resolve(parsed);
-                });
+        var req=https.request({hostname:u.hostname,port:u.port||443,
+            method:method,path:u.pathname+u.search,headers:headers,
+            rejectUnauthorized:true,timeout:75000},function(res){
+            var chunks=[],size=0;
+            res.on('data',function(b){
+                size+=b.length;
+                if(size>2097152) {res.destroy(Error('پاسخ سرور بیش از حد بزرگ است'));return;}
+                chunks.push(b);
             });
-            sent.on('timeout', function () { sent.destroy(new Error('مهلت اتصال به سرور تمام شد')); });
-            sent.on('error', reject);
-            if (payload) sent.write(payload.data);
-            sent.end();
-        });
-    }
-    function jsonBody(data) {
-        return { data: Buffer.from(JSON.stringify(data), 'utf8') };
-    }
-    function multipart(fields, buffer, name) {
-        var boundary = 'Pardach' + crypto.randomBytes(16).toString('hex');
-        var segments = [];
-        Object.keys(fields).forEach(function (key) {
-            segments.push(Buffer.from('--' + boundary + '\r\nContent-Disposition: form-data; name="' +
-                key + '"\r\n\r\n' + String(fields[key]) + '\r\n', 'utf8'));
-        });
-        var filename = String(name).replace(/[^a-zA-Z0-9_.-]/g, '_');
-        segments.push(Buffer.from('--' + boundary +
-            '\r\nContent-Disposition: form-data; name="files"; filename="' + filename +
-            '"\r\nContent-Type: image/svg+xml\r\n\r\n', 'utf8'));
-        segments.push(buffer);
-        segments.push(Buffer.from('\r\n--' + boundary + '--\r\n', 'utf8'));
-        return { data: Buffer.concat(segments), type: 'multipart/form-data; boundary=' + boundary };
-    }
-    function evalHost(expression) {
-        return new Promise(function (resolve, reject) {
-            if (!window.__adobe_cep__ || !window.__adobe_cep__.evalScript) {
-                return reject(new Error('پنل باید از داخل Adobe Illustrator باز شود'));
-            }
-            window.__adobe_cep__.evalScript(expression, function (reply) {
-                var result;
-                try { result = JSON.parse(reply); }
-                catch (_) { return reject(new Error('اسکریپت Illustrator پاسخ معتبر نداد: ' + String(reply).slice(0, 70))); }
-                if (!result.ok) return reject(new Error(result.error || 'خطا در Illustrator'));
-                resolve(result);
+            res.on('end',function(){
+                var data; try{data=JSON.parse(Buffer.concat(chunks).toString('utf8'));}
+                catch(_){return reject(Error('HTTP '+res.statusCode+': پاسخ غیر JSON از سرور'));}
+                if(res.statusCode<200||res.statusCode>=300){
+                    var detail=data.detail||data.message||data.error||'خطا';
+                    return reject(Error('HTTP '+res.statusCode+': '+String(
+                        typeof detail==='string'?detail:JSON.stringify(detail)).slice(0,260)));
+                }
+                resolve(data);
             });
         });
-    }
-    function clearSession() {
-        state.access = '';
-        state.username = '';
-        state.selection = null;
-        ui('password').value = '';
-        ui('loginBox').hidden = false;
-        ui('uploadBox').hidden = true;
-    }
-    function fieldsFromSelection(info) {
-        if (!state.selection || info.name !== state.selection.name ||
-            info.count !== state.selection.count ||
-            info.width_mm !== state.selection.width_mm ||
-            info.height_mm !== state.selection.height_mm) {
-            throw new Error('انتخاب تغییر کرده است؛ ابتدا دوباره «خواندن انتخاب» را بزنید.');
-        }
-        var kind = ui('kind').value, family = ui('family').value.trim();
-        var code = ui('code').value.trim(), title = ui('title').value.trim();
-        if (!title || !code || !kind) throw new Error('نام، کد و نوع طرح باید مشخص باشند.');
-        if (kind === 'flower' && !family) throw new Error('برای گل کد خانواده را وارد کنید.');
-        if (family && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/.test(family)) {
-            throw new Error('کد خانواده فقط می‌تواند شامل حروف لاتین، عدد، _ و - باشد.');
-        }
-        var tags = ui('tags').value.split(/[,،]/).map(function (s) { return s.trim(); })
-            .filter(Boolean).slice(0, 20);
-        return {
-            title: title, code: code, design_kind: kind,
-            family_key: family, content_tags: tags,
-            // Backend stores its public width/height as *rounded centimetres*.
-            // Exact cm values survive in the JSON metadata and SVG itself.
-            width: Math.round(info.width_mm * 1000) / 10000,
-            height: Math.round(info.height_mm * 1000) / 10000,
-            unit: 'cm'
-        };
-    }
-    async function login() {
-        if (!https || !fs || !crypto) throw new Error('CEP Node.js در این نسخه فعال نیست');
-        state.server = ensureServer(ui('server').value);
-        var username = ui('username').value.trim(), pass = ui('password').value;
-        if (!username || !pass) throw new Error('نام کاربری و رمز عبور را وارد کنید');
-        var result = await request('/api/auth/login/', 'POST',
-            jsonBody({username: username, password: pass}), '', false);
-        if (!result.access) throw new Error('توکن دسترسی از سرور دریافت نشد');
-        state.access = result.access;
-        // Never upload against the old unsafe backend, which could modify a duplicate.
-        try {
-            var capabilities = await request('/api/designs/designs/upload-capabilities/', 'GET', null, state.access, false);
-            if (capabilities.insert_only !== true || capabilities.sha256_preflight !== true) throw new Error('secure upload capabilities are unavailable');
-        } catch (_) {
-            state.access = '';
-            throw new Error('سرور هنوز به نسخه ایمن بارگذاری مستقیم ارتقا نیافته یا دسترسی بارگذاری ندارید.');
-        }
-        state.username = username;
-        ui('password').value = '';
-        ui('connectedAs').textContent = 'متصل: ' + username;
-        ui('loginBox').hidden = true;
-        ui('uploadBox').hidden = false;
-        status('ورود موفق. طرح را انتخاب کنید و «خواندن انتخاب» را بزنید.', 'ok');
-    }
-    async function inspect() {
-        var info = await evalHost('PardachDirectUpload.inspect()');
-        state.selection = info;
-        ui('title').value = info.name.substring(0, 255);
-        ui('code').value = info.name.substring(0, 160);
-        ui('dimensions').textContent = info.count + ' آیتم انتخاب شده | ' +
-            info.width_mm + ' × ' + info.height_mm + ' میلی‌متر';
-        status('انتخاب خوانده شد؛ اطلاعات را بررسی کنید.', 'ok');
-    }
-    async function upload() {
-        if (!state.selection) throw new Error('ابتدا «خواندن انتخاب» را بزنید.');
-        /* Export is generated only at send time: never upload a stale file. */
-        var result = await evalHost('PardachDirectUpload.exportSelection()');
-        var path = result.path, bytes;
-        try {
-            bytes = fs.readFileSync(path);
-        } finally {
-            /* Temporary export is not a user-facing artifact. */
-            try { if (path) fs.unlinkSync(path); } catch (_) {}
-        }
-        if (bytes.length < 50 || bytes.length > 20 * 1024 * 1024) {
-            throw new Error('حجم SVG نامعتبر یا بیشتر از سقف ۲۰ مگابایت است');
-        }
-        var svg = bytes.toString('utf8');
-        if (!/<svg\b/i.test(svg)) throw new Error('خروجی SVG معتبر نیست');
-        if (/<(?:image|use)\b[^>]*(?:xlink:)?href\s*=\s*["'](?:https?:|file:|\.\.?\/)/i.test(svg)) {
-            throw new Error('طرح دارای منابع لینک‌شده خارجی است؛ ابتدا آن‌ها را Embed کنید.');
-        }
-        var meta = fieldsFromSelection(result);
-        var safeName = meta.code.replace(/[^a-zA-Z0-9_.-]/g, '_') || 'design';
-        var filename = safeName.replace(/\.svg$/i, '') + '.svg';
-        var sha = crypto.createHash('sha256').update(bytes).digest('hex');
-        status('در حال بررسی تکراری نبودن طرح…');
-        // Hash-only preflight avoids uploading the full SVG twice.
-        var preflight = await request('/api/designs/designs/check-duplicate/', 'POST',
-            jsonBody({file_hash: sha}), state.access, false);
-        if (preflight.is_duplicate) {
-            throw new Error('این فایل قبلاً ثبت شده است (شناسه ' +
-                (preflight.existing_design && preflight.existing_design.id || 'نامشخص') +
-                '). برای جلوگیری از تغییر رکورد موجود، ارسال نشد.');
-        }
-        if (preflight.file_hash && preflight.file_hash !== sha) {
-            throw new Error('هش فایل در سرور با فایل محلی یکسان نیست');
-        }
-        status('در حال ارسال امن SVG به سرور…');
-        var fields = {
-            default_status: 'pending',
-            insert_only: '1',
-            design_kind: meta.design_kind,
-            metadata: JSON.stringify(Object.assign({file_name: filename}, meta))
-        };
-        if (meta.family_key) fields.family_key = meta.family_key;
-        var saved = await request('/api/designs/designs/batch-upload/', 'POST',
-            multipart(fields, bytes, filename), state.access, true);
-        if (!saved.created_ids || saved.created_ids.length !== 1 || Object.keys(saved.errors || {}).length) {
-            throw new Error('سرور بارگذاری را تأیید نکرد: ' + JSON.stringify(saved.errors || saved).slice(0, 220));
-        }
-        status('✅ طرح با شناسه ' + saved.created_ids[0] + ' در کاتالوگ ثبت شد و در انتظار تأیید است.', 'ok');
-    }
-    async function run(fn) {
-        if (state.busy) return;
-        busy(true);
-        try { await fn(); }
-        catch (error) {
-            var msg = String(error && error.message || error);
-            status(msg, 'error');
-            if (/HTTP 401/.test(msg)) clearSession();
-        }
-        finally { busy(false); }
-    }
-    ui('loginBtn').addEventListener('click', function () { run(login); });
-    ui('inspectBtn').addEventListener('click', function () { run(inspect); });
-    ui('uploadBtn').addEventListener('click', function () { run(upload); });
-    ui('logoutBtn').addEventListener('click', function () {
-        // Clear in memory even if the server is unreachable.
-        clearSession();
-        status('از حساب خارج شدید.');
+        req.on('error',reject);
+        req.on('timeout',function(){req.destroy(Error('پاسخ سرور دیر رسید'));});
+        if(payload)req.write(payload.data);
+        req.end();
     });
-    if (!https || !fs || !crypto) status('Node.js CEP فعال نیست؛ نصب یا manifest را بررسی کنید.', 'error');
-}());
+}
+function jsonPayload(data){return {data:Buffer.from(JSON.stringify(data),'utf8'),type:'application/json'};}
+function multipart(files) {
+    var boundary='Pardach_'+crypto.randomBytes(16).toString('hex'),chunks=[];
+    function field(key,value){
+        chunks.push(Buffer.from('--'+boundary+'\r\nContent-Disposition: form-data; name="'+key+
+            '"\r\n\r\n'+String(value)+'\r\n','utf8'));
+    }
+    field('default_status','pending');
+    field('insert_only','1');
+    field('metadata',JSON.stringify(files.map(function(f){return f.meta;})));
+    files.forEach(function(f){
+        chunks.push(Buffer.from('--'+boundary+'\r\nContent-Disposition: form-data; name="files"; filename="'+
+           f.filename+'"\r\nContent-Type: image/svg+xml\r\n\r\n','utf8'));
+        chunks.push(f.bytes);
+        chunks.push(Buffer.from('\r\n','utf8'));
+    });
+    chunks.push(Buffer.from('--'+boundary+'--\r\n'));
+    return {data:Buffer.concat(chunks),type:'multipart/form-data; boundary='+boundary};
+}
+function callHost(expression) {
+    return new Promise(function(resolve,reject) {
+        if(!window.__adobe_cep__ || !window.__adobe_cep__.evalScript)
+            return reject(Error('پنل فقط در Adobe Illustrator کار می‌کند'));
+        window.__adobe_cep__.evalScript(expression,function(reply){
+            var data;
+            try {data=JSON.parse(reply);}
+            catch(_){return reject(Error('دریافت پاسخ معتبر از Illustrator ممکن نیست: '+String(reply).slice(0,90)));}
+            if(!data.ok)return reject(Error(data.error||'خطا در Illustrator'));
+            resolve(data);
+        });
+    });
+}
+function forget(){
+    state.access='';state.username='';state.items=[];state.stop=true;
+    $('password').value='';$('loginBox').hidden=false;$('uploadBox').hidden=true;
+    ['bulkBox','listBox','sendBox'].forEach(function(id){$(id).hidden=true;});
+}
+async function login(){
+    if(!https || !fs || !crypto || !os || !path)throw Error('CEP Node در Illustrator فعال نیست');
+    state.server=normalizeServer($('server').value);
+    var username=$('username').value.trim(),password=$('password').value;
+    if(!username||!password)throw Error('نام کاربری و رمز عبور لازم است');
+    var data=await http('/api/auth/login/','POST',
+        jsonPayload({username:username,password:password}),'');
+    if(!data.access)throw Error('سرور توکن دسترسی برنگرداند');
+    state.access=data.access;
+    try{
+        var cap=await http('/api/designs/designs/upload-capabilities/','GET',null,state.access);
+        if(cap.insert_only!==true||cap.batch_sha256_preflight!==true)
+            throw Error('server capabilities');
+    }catch(_){
+        state.access='';
+        throw Error('سرور هنوز نسخه امن بارگذاری گروهی را ندارد یا شما مجوز بارگذاری ندارید.');
+    }
+    $('password').value='';
+    state.username=username;$('connectedAs').textContent='متصل: '+username;
+    $('loginBox').hidden=true;$('uploadBox').hidden=false;
+    message('متصل شد. طرح‌ها را در Illustrator انتخاب و بررسی کنید.','ok');
+}
+function suggestion(info) {
+    var original=String(info.name||'').trim(),name=original.replace(/\.(ai|svg)$/i,'').trim();
+    var parent=String(info.parent_name||'').trim(),family='',kind='';
+    var parentMatch=parent.match(/^(?:(?:family|fam|خانواده)[\s:_-]*)?([a-z0-9][a-z0-9_-]{0,119})$/i);
+    // Avoid turning arbitrary words into family keys.
+    if(parentMatch && (/^\d+$/.test(parentMatch[1]) || /^f\d+$/i.test(parentMatch[1]) ||
+        /^(?:family|fam|خانواده)/i.test(parent)))family=parentMatch[1];
+    var compact=name.match(/^(\d{1,10})(r\d*|k|g|b|t|d)$/i);
+    if(compact){
+        family=compact[1];
+        var marker=compact[2].charAt(0).toLowerCase();
+        kind=({r:'rakab',k:'half_flower',g:'flower',b:'benook',t:'tek',d:'darzi'})[marker]||'';
+    }
+    var note=String(info.source_note||''),noteMetadata={};
+    if(note.charAt(0)==='{')try{noteMetadata=JSON.parse(note)||{};}catch(_){}
+    if(noteMetadata.family_key&&/^[a-z0-9][a-z0-9_-]{0,119}$/i.test(noteMetadata.family_key))
+        family=noteMetadata.family_key;
+    if(noteMetadata.design_kind && KIND_LABELS.some(function(k){return k[0]===noteMetadata.design_kind;}))
+        kind=noteMetadata.design_kind;
+    if(kind==='tool')family='';
+    return {
+        id:info.id,name:original,title:String(noteMetadata.title||name||'طرح').slice(0,255),
+        code:String(noteMetadata.code||name||info.id).slice(0,160),
+        kind:kind,family:family,tags:String(noteMetadata.tags||''),description:String(
+            noteMetadata.description||(note.charAt(0)==='{'?'':note)||'').slice(0,2000),
+        collection:String(noteMetadata.collection||''),rating:'',label:'',
+        width_mm:info.width_mm,height_mm:info.height_mm,signature:info.signature,
+        parent_name:parent,checked:true,status:'pending',error:''
+    };
+}
+async function inspect(){
+    var mode=$('splitMode').value;
+    var result=await callHost('PardachDirectUpload.inspectBatch('+JSON.stringify(mode)+')');
+    state.mode=mode;state.docName=result.doc_name;
+    state.items=result.items.map(suggestion);state.page=0;
+    $('bulkBox').hidden=$('listBox').hidden=$('sendBox').hidden=false;
+    $('progress').value=0;$('progress').max=1;$('progressText').textContent='آماده ارسال';
+    render();
+    message('ساختار بررسی شد: '+result.items.length+' طرح. نوع، خانواده و اطلاعات را تأیید کنید.','ok');
+}
+function validate(item) {
+    if(!item.title.trim()||!item.code.trim()||!item.kind)return 'نام، کد و نوع طرح لازم است';
+    if(item.kind==='flower'&&!item.family.trim())return 'برای گل، کد خانواده لازم است';
+    if(item.family && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/.test(item.family))return 'کد خانواده نامعتبر است';
+    if(item.kind==='tool' && item.family)return 'ابزار مستقل است؛ خانواده باید خالی باشد';
+    if(item.title.length>255||item.code.length>160)return 'نام یا کد بیش از حد طولانی است';
+    return '';
+}
+function countSummary(){
+    var total=state.items.length,
+        checked=state.items.filter(function(it){return it.checked;}).length,
+        valid=state.items.filter(function(it){return it.checked&&!validate(it)&&it.status!=='done';}).length,
+        done=state.items.filter(function(it){return it.status==='done';}).length,
+        duplicate=state.items.filter(function(it){return it.status==='duplicate';}).length,
+        error=state.items.filter(function(it){return it.status==='error';}).length;
+    $('checkedCount').textContent=checked+' انتخاب';
+    $('summary').textContent='شناسایی: '+total+' | منتخب: '+checked+
+        ' | آماده: '+valid+' | ثبت‌شده: '+done+' | تکراری: '+duplicate+' | خطادار: '+error;
+}
+function element(type,klass,txt){
+    var e=document.createElement(type);if(klass)e.className=klass;
+    if(txt!==undefined)e.textContent=String(txt);return e;
+}
+function inputField(parent,label,value,update,max) {
+    var div=element('div'),lab=element('label',null,label),inp=element('input');
+    inp.value=value||'';if(max)inp.maxLength=max;
+    inp.addEventListener('change',function(){update(inp.value);countSummary();});
+    div.appendChild(lab);div.appendChild(inp);parent.appendChild(div);return inp;
+}
+function selectField(parent,label,value,update) {
+    var div=element('div'),lab=element('label',null,label),select=element('select');
+    KIND_LABELS.forEach(function(pair){var o=element('option',null,pair[1]);o.value=pair[0];select.appendChild(o);});
+    select.value=value||'';
+    select.addEventListener('change',function(){update(select.value);countSummary();});
+    div.appendChild(lab);div.appendChild(select);parent.appendChild(div);
+}
+function row(item) {
+    var card=element('div','design'+(item.status==='error'?' error':item.status==='done'?' done':''));
+    var top=element('div','top'),checkbox=element('input');
+    checkbox.type='checkbox';checkbox.checked=!!item.checked;
+    checkbox.disabled=item.status==='done';
+    checkbox.setAttribute('aria-label','انتخاب '+item.title);
+    checkbox.addEventListener('change',function(){item.checked=checkbox.checked;countSummary();});
+    top.appendChild(checkbox);
+    var title=element('div','name',item.title);top.appendChild(title);
+    var expand=element('button','secondary tiny auto','اطلاعات بیشتر');top.appendChild(expand);
+    card.appendChild(top);
+    card.appendChild(element('div','mini',item.width_mm+' × '+item.height_mm+
+        ' mm | '+(item.parent_name?'خانواده/گروه: '+item.parent_name+' | ':'')+item.id));
+    var fields=element('div','linefields');
+    selectField(fields,'نوع',item.kind,function(v){item.kind=v;if(v==='tool')item.family='';render();});
+    inputField(fields,'کد خانواده',item.family,function(v){item.family=v.trim();},120);
+    card.appendChild(fields);
+    var details=element('div','details');details.hidden=true;
+    inputField(details,'نام کامل',item.title,function(v){item.title=v;title.textContent=v;},255);
+    inputField(details,'کد/شناسه طرح',item.code,function(v){item.code=v;},160);
+    inputField(details,'برچسب‌ها (ویرگول)',item.tags,function(v){item.tags=v;},400);
+    inputField(details,'کالکشن',item.collection,function(v){item.collection=v;},120);
+    inputField(details,'شرح طرح',item.description,function(v){item.description=v;},2000);
+    card.appendChild(details);
+    expand.addEventListener('click',function(){
+        details.hidden=!details.hidden;expand.textContent=details.hidden?'اطلاعات بیشتر':'بستن جزئیات';
+    });
+    var note=validate(item);
+    if(item.status==='done')note='✅ در کاتالوگ ثبت شد';
+    if(item.status==='duplicate')note='تکراری: '+item.error;
+    if(item.status==='error')note='خطا: '+item.error;
+    if(note)card.appendChild(element('div','mini',note));
+    return card;
+}
+function render(){
+    countSummary();
+    var pages=Math.max(1,Math.ceil(state.items.length/PAGE_SIZE));
+    state.page=Math.max(0,Math.min(state.page,pages-1));
+    $('queue').textContent='';
+    state.items.slice(state.page*PAGE_SIZE,(state.page+1)*PAGE_SIZE).forEach(function(item){
+        $('queue').appendChild(row(item));
+    });
+    $('pageInfo').textContent='صفحه '+(state.page+1)+' از '+pages;
+    $('prevBtn').disabled=state.busy||state.page===0;
+    $('nextBtn').disabled=state.busy||state.page>=pages-1;
+}
+function bulkApply(){
+    var kind=$('bulkKind').value,family=$('bulkFamily').value.trim(),
+        tags=$('bulkTags').value.trim(),collection=$('bulkCollection').value.trim();
+    if(family && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/.test(family))throw Error('کد خانواده نامعتبر است');
+    var changed=0;
+    state.items.forEach(function(item){
+        if(!item.checked||item.status==='done')return;
+        if(kind){item.kind=kind;if(kind==='tool')item.family='';}
+        if(family&&item.kind!=='tool')item.family=family;
+        if(tags)item.tags=Array.from(new Set((item.tags+','+tags).split(/[,،]/)
+            .map(function(s){return s.trim();}).filter(Boolean))).join('، ');
+        if(collection)item.collection=collection;changed++;
+    });
+    render();message('اطلاعات روی '+changed+' طرح منتخب اعمال شد.','ok');
+}
+function setChecks(filter) {
+    state.items.forEach(function(item){item.checked=item.status!=='done'&&filter(item);});
+    render();
+}
+function safeTempRead(tempPath){
+    var p=path.resolve(String(tempPath||'')),temp=fs.realpathSync(os.tmpdir());
+    if(path.dirname(p)!==temp||!/^pardach_batch_[0-9]+_[0-9]+\.svg$/i.test(path.basename(p)))
+        throw Error('مسیر فایل موقت معتبر نیست');
+    var stat=fs.lstatSync(p);
+    if(!stat.isFile()||stat.isSymbolicLink()||stat.size>20*1024*1024||stat.size<50)
+        throw Error('فایل SVG موقت نامعتبر یا بیش از ۲۰ مگابایت است');
+    try {
+        var bytes=fs.readFileSync(p),svg=bytes.toString('utf8');
+        if(!/<svg\b/i.test(svg))throw Error('فایل خروجی SVG نیست');
+        if(/<(?:image|use)\b[^>]*(?:xlink:)?href\s*=\s*["'](?:https?:|file:|\.\.?\/)/i.test(svg))
+            throw Error('لینک خارجی در SVG وجود دارد؛ ابتدا Embed کنید');
+        return bytes;
+    } finally {
+        try {fs.unlinkSync(p);}catch(_){}
+    }
+}
+function meta(item,filename){
+    return {file_name:filename,title:item.title.trim(),code:item.code.trim(),
+        design_kind:item.kind,family_key:item.family.trim(),
+        width:Math.round(item.width_mm*100)/1000,
+        height:Math.round(item.height_mm*100)/1000,unit:'cm',
+        keywords:[],content_tags:item.tags.split(/[,،]/).map(function(s){return s.trim();}).filter(Boolean).slice(0,20),
+        collection:item.collection.trim(),description:item.description.trim(),
+        source:'illustrator-direct-uploader'};
+}
+function buildPrepared(item,result){
+    if(result.signature!==item.signature)throw Error('ساختار یا ابعاد انتخاب تغییر کرده؛ دوباره بررسی کنید');
+    var bytes=safeTempRead(result.path),hash=crypto.createHash('sha256').update(bytes).digest('hex');
+    // File name stays ASCII for multipart safety and unique for every Illustrator row.
+    var filename='design_'+item.id.replace(/[^a-z0-9]/ig,'_')+'_'+hash.slice(0,10)+'.svg';
+    return {item:item,bytes:bytes,hash:hash,filename:filename,meta:meta(item,filename)};
+}
+async function submitChunk(chunk) {
+    var ids=chunk.map(function(i){return i.id;});
+    // Host exports up to eight designs in one bridge call.
+    var host=await callHost('PardachDirectUpload.exportBatch('+
+        JSON.stringify(state.mode)+','+JSON.stringify(ids.join('|'))+')');
+    var byId={};chunk.forEach(function(item){byId[item.id]=item;});
+    var prepared=[],known={};
+    host.results.forEach(function(output){
+        var item=byId[output.id];if(!item)return;
+        if(!output.ok) {
+            item.status='error';item.error=output.error||'خروجی‌گیری ناموفق';
+            return;
+        }
+        try {
+            var ready=buildPrepared(item,output);
+            if(known[ready.hash]){
+                item.status='duplicate';item.error='طرح یکسان در همین دسته انتخاب شده است';
+            }else{prepared.push(ready);known[ready.hash]=true;}
+        }catch(e){
+            item.status='error';item.error=e.message;
+        }
+    });
+    if(!prepared.length)return;
+    // One short JSON request checks all hashes; original SVGs transfer once.
+    var preflight=await http('/api/designs/designs/check-duplicates/','POST',
+        jsonPayload({hashes:prepared.map(function(p){return p.hash;})}),state.access);
+    var files=[];
+    prepared.forEach(function(p){
+        if(preflight.duplicates && preflight.duplicates[p.hash]){
+            p.item.status='duplicate';p.item.error='شناسه '+preflight.duplicates[p.hash];
+        }else files.push(p);
+    });
+    if(!files.length)return;
+    // Cap each upload request, even when Illustrator exports very large images.
+    var packets=[],current=[],bytes=0;
+    files.forEach(function(f){
+        if(current.length && bytes+f.bytes.length>MAX_BATCH_BYTES) {
+            packets.push(current);current=[];bytes=0;
+        }
+        current.push(f);bytes+=f.bytes.length;
+    });
+    if(current.length)packets.push(current);
+    for(var k=0;k<packets.length;k++){
+        var pack=packets[k];
+        try{
+            var saved=await http('/api/designs/designs/batch-upload/','POST',
+                multipart(pack),state.access);
+            var errors=saved.errors||{},accepted=saved.created_ids||[],pos=0;
+            pack.forEach(function(p){
+                var e=errors[p.filename];
+                if(e) {p.item.status=e.error==='duplicate'?'duplicate':'error';
+                    p.item.error=String(e.error||'خطای ثبت');}
+                else if(pos<accepted.length) {
+                    p.item.status='done';p.item.error='شناسه '+accepted[pos++];
+                } else {
+                    p.item.status='error';p.item.error='سرور شناسه ثبت‌شده را اعلام نکرد';
+                }
+            });
+        }catch(e){
+            pack.forEach(function(p){p.item.status='error';p.item.error=e.message;});
+            if(/HTTP 401/.test(e.message)){state.stop=true;throw e;}
+        }
+    }
+}
+async function upload(){
+    if(!state.items.length)throw Error('ابتدا طرح‌ها را بررسی کنید');
+    var pending=state.items.filter(function(i){return i.checked&&i.status!=='done'&&i.status!=='duplicate';});
+    if(!pending.length)throw Error('طرح آماده یا خطادارِ انتخاب‌شده‌ای وجود ندارد');
+    var valid=pending.filter(function(i){
+        var err=validate(i);if(err){i.status='error';i.error=err;return false;}
+        return true;
+    });
+    if(!valid.length){render();throw Error('اطلاعات طرح‌های انتخابی کامل نیست');}
+    // Families with new flowers are created first, even across request boundaries.
+    valid.sort(function(a,b){return Number(b.kind==='flower')-Number(a.kind==='flower');});
+    state.stop=false;state.cancelable=true;$('cancelBtn').disabled=false;
+    $('progress').max=valid.length;$('progress').value=0;
+    var completed=0;
+    try {
+        for(var i=0;i<valid.length;i+=EXPORT_SIZE){
+            if(state.stop)break;
+            var batch=valid.slice(i,i+EXPORT_SIZE);
+            batch.forEach(function(item){item.status='sending';item.error='';});
+            message('در حال خروجی گرفتن و ارسال دسته '+(Math.floor(i/EXPORT_SIZE)+1)+' ...');
+            try{await submitChunk(batch);}
+            catch(e){
+                batch.forEach(function(item){
+                    if(item.status==='sending'){item.status='error';item.error=e.message;}
+                });
+                if(/HTTP 401/.test(e.message)){throw e;}
+            }
+            completed+=batch.length;
+            $('progress').value=completed;
+            $('progressText').textContent='پردازش: '+completed+' از '+valid.length;
+            render();
+        }
+    } finally {
+        state.cancelable=false;$('cancelBtn').disabled=true;
+    }
+    var done=valid.filter(function(i){return i.status==='done';}).length,
+        duplicate=valid.filter(function(i){return i.status==='duplicate';}).length,
+        errors=valid.filter(function(i){return i.status==='error';}).length;
+    message('نتیجه: '+done+' ثبت شد، '+duplicate+' تکراری، '+errors+' خطادار'+
+        (state.stop?' | عملیات متوقف شد':'')+'.',errors?'error':'ok');
+}
+async function run(action){
+    if(state.busy)return;
+    setBusy(true);
+    try{await action();}
+    catch(e){var text=String(e&&e.message||e);message(text,'error');if(/HTTP 401/.test(text))forget();}
+    finally{setBusy(false);render();}
+}
+$('loginBtn').addEventListener('click',function(){run(login);});
+$('inspectBtn').addEventListener('click',function(){run(inspect);});
+$('uploadBtn').addEventListener('click',function(){run(upload);});
+$('applyBulkBtn').addEventListener('click',function(){run(function(){bulkApply();});});
+$('cancelBtn').addEventListener('click',function(){state.stop=true;message('بعد از پایان این دسته، ارسال متوقف می‌شود.');});
+$('logoutBtn').addEventListener('click',function(){forget();message('خارج شدید');});
+$('checkAllBtn').addEventListener('click',function(){setChecks(function(){return true;});});
+$('checkNoneBtn').addEventListener('click',function(){setChecks(function(){return false;});});
+$('retryBtn').addEventListener('click',function(){
+    setChecks(function(i){return i.status==='error'||i.status==='pending';});
+});
+$('prevBtn').addEventListener('click',function(){if(state.page>0){state.page--;render();}});
+$('nextBtn').addEventListener('click',function(){state.page++;render();});
+if(!https||!fs||!crypto||!os||!path)message('Node.js در پنل CEP در دسترس نیست.','error');
+})();
