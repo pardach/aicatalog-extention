@@ -11,7 +11,7 @@ try {
     path = require('path'); crypto = require('crypto');
 } catch (_) {}
 var state = {server:'',access:'',username:'',items:[],mode:'smart',
-    docName:'',busy:false,cancelable:false,stop:false,page:0,sequence:0};
+    docName:'',busy:false,cancelable:false,stop:false,page:0,sequence:0,dirty:false};
 var PAGE_SIZE = 25, EXPORT_SIZE = 8, MAX_BATCH_BYTES = 12 * 1024 * 1024;
 var KIND_LABELS = [
     ['', 'نوع را انتخاب کنید'], ['flower','گل'], ['half_flower','کپ گل'],
@@ -100,7 +100,7 @@ function callHost(expression) {
     });
 }
 function forget(){
-    state.access='';state.username='';state.items=[];state.stop=true;
+    state.access='';state.username='';state.items=[];state.stop=true;state.dirty=false;
     $('password').value='';$('loginBox').hidden=false;$('uploadBox').hidden=true;
     ['bulkBox','listBox','sendBox'].forEach(function(id){$(id).hidden=true;});
 }
@@ -163,10 +163,12 @@ function suggestion(info) {
     };
 }
 async function inspect(){
+    if(state.items.length&&state.dirty&&
+       !window.confirm('اطلاعات و انتخاب‌های ویرایش‌شده با بررسی دوباره از نو ساخته می‌شوند. ادامه می‌دهید؟'))return;
     var mode=$('splitMode').value;
     var result=await callHost('PardachDirectUpload.inspectBatch('+JSON.stringify(mode)+')');
     state.mode=mode;state.docName=result.doc_name;
-    state.items=result.items.map(suggestion);state.page=0;
+    state.items=result.items.map(suggestion);state.page=0;state.dirty=false;
     $('bulkBox').hidden=$('listBox').hidden=$('sendBox').hidden=false;
     $('progress').value=0;$('progress').max=1;$('progressText').textContent='آماده ارسال';
     render();
@@ -198,14 +200,14 @@ function element(type,klass,txt){
 function inputField(parent,label,value,update,max) {
     var div=element('div'),lab=element('label',null,label),inp=element('input');
     inp.value=value||'';if(max)inp.maxLength=max;inp.disabled=state.busy;
-    inp.addEventListener('change',function(){update(inp.value);countSummary();});
+    inp.addEventListener('change',function(){update(inp.value);state.dirty=true;countSummary();});
     div.appendChild(lab);div.appendChild(inp);parent.appendChild(div);return inp;
 }
 function selectField(parent,label,value,update) {
     var div=element('div'),lab=element('label',null,label),select=element('select');
     KIND_LABELS.forEach(function(pair){var o=element('option',null,pair[1]);o.value=pair[0];select.appendChild(o);});
     select.value=value||'';select.disabled=state.busy;
-    select.addEventListener('change',function(){update(select.value);countSummary();});
+    select.addEventListener('change',function(){update(select.value);state.dirty=true;countSummary();});
     div.appendChild(lab);div.appendChild(select);parent.appendChild(div);
 }
 function row(item) {
@@ -214,7 +216,7 @@ function row(item) {
     checkbox.type='checkbox';checkbox.checked=!!item.checked;
     checkbox.disabled=item.status==='done'||state.busy;
     checkbox.setAttribute('aria-label','انتخاب '+item.title);
-    checkbox.addEventListener('change',function(){item.checked=checkbox.checked;countSummary();});
+    checkbox.addEventListener('change',function(){item.checked=checkbox.checked;state.dirty=true;countSummary();});
     top.appendChild(checkbox);
     var title=element('div','name',item.title);top.appendChild(title);
     var focusBtn=element('button','secondary tiny auto','نمایش');
@@ -278,9 +280,11 @@ function bulkApply(){
             .map(function(s){return s.trim();}).filter(Boolean))).join('، ');
         if(collection)item.collection=collection;changed++;
     });
+    state.dirty=true;
     render();message('اطلاعات روی '+changed+' طرح منتخب اعمال شد.','ok');
 }
 function setChecks(filter) {
+    state.dirty=true;
     state.items.forEach(function(item){item.checked=item.status!=='done'&&filter(item);});
     render();
 }
