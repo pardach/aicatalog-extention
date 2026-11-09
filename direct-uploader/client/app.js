@@ -11,7 +11,7 @@ try {
     path = require('path'); crypto = require('crypto');
 } catch (_) {}
 var state = {server:'',access:'',username:'',items:[],mode:'smart',
-    docName:'',busy:false,cancelable:false,stop:false,page:0,sequence:0,dirty:false};
+    docName:'',busy:false,cancelable:false,stop:false,page:0,sequence:0,dirty:false,batchCode:''};
 var PAGE_SIZE = 25, EXPORT_SIZE = 8, MAX_BATCH_BYTES = 12 * 1024 * 1024;
 var KIND_LABELS = [
     ['', 'نوع را انتخاب کنید'], ['flower','گل'], ['half_flower','کپ گل'],
@@ -152,9 +152,11 @@ function suggestion(info) {
     if(noteMetadata.design_kind && KIND_LABELS.some(function(k){return k[0]===noteMetadata.design_kind;}))
         kind=noteMetadata.design_kind;
     if(kind==='tool')family='';
+    var unnamed=!name||/^<.*group.*>$/i.test(name)||/^طرح [0-9۰-۹٠-٩]+$/i.test(name);
+    var generatedCode=state.batchCode+'-'+String(info.id||'x').replace(/[^a-z0-9]/ig,'_');
     return {
-        id:info.id,name:original,title:String(noteMetadata.title||name||'طرح').slice(0,255),
-        code:String(noteMetadata.code||name||info.id).slice(0,160),
+        id:info.id,name:original,title:String(noteMetadata.title||(unnamed?'طرح '+info.id:name)||'طرح').slice(0,255),
+        code:String(noteMetadata.code||(unnamed?generatedCode:name)||info.id).slice(0,160),
         kind:kind,family:family,tags:String(noteMetadata.tags||''),description:String(
             noteMetadata.description||(note.charAt(0)==='{'?'':note)||'').slice(0,2000),
         collection:String(noteMetadata.collection||''),rating:'',label:'',
@@ -168,6 +170,7 @@ async function inspect(){
     var mode=$('splitMode').value;
     var result=await callHost('PardachDirectUpload.inspectBatch('+JSON.stringify(mode)+')');
     state.mode=mode;state.docName=result.doc_name;
+    state.batchCode='AI-'+Date.now().toString(36).toUpperCase();
     state.items=result.items.map(suggestion);state.page=0;state.dirty=false;
     $('bulkBox').hidden=$('listBox').hidden=$('sendBox').hidden=false;
     $('progress').value=0;$('progress').max=1;$('progressText').textContent='آماده ارسال';
