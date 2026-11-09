@@ -1,87 +1,180 @@
-/* Pardach direct uploader - Illustrator ExtendScript (ES3-compatible).
- * Never saves or modifies the source document. One selected group or several
- * selected pageItems become ONE SVG catalog asset.
+/* Pardach multi-design Illustrator exporter - ES3-compatible ExtendScript.
+ * A family container may contain multiple grouped designs; nested objects
+ * within each design group remain together. Source artwork is never modified.
  */
 var PardachDirectUpload = (function () {
-    function escapeText(value) {
-        return String(value == null ? "" : value)
-            .replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-            .replace(/\r/g, "\\r").replace(/\n/g, "\\n").replace(/\t/g, "\\t");
+    function quoted(s) {
+        return '"' + String(s == null ? '' : s).replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"').replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n').replace(/\t/g, '\\t') + '"';
     }
-    function respond(data) {
-        var keys = [], key, value;
-        for (key in data) {
-            if (!data.hasOwnProperty(key)) continue;
-            value = data[key];
-            keys.push('"' + escapeText(key) + '":' +
-                (typeof value === "number" || typeof value === "boolean" ? String(value) : '"' + escapeText(value) + '"'));
+    function json(value) {
+        var i, items = [], k;
+        if (value === null || typeof value === 'undefined') return 'null';
+        if (typeof value === 'string') return quoted(value);
+        if (typeof value === 'boolean') return value ? 'true' : 'false';
+        if (typeof value === 'number') return isFinite(value) ? String(value) : 'null';
+        if (value instanceof Array) {
+            for (i = 0; i < value.length; i++) items.push(json(value[i]));
+            return '[' + items.join(',') + ']';
         }
-        return "{" + keys.join(",") + "}";
+        for (k in value) if (value.hasOwnProperty(k)) items.push(quoted(k) + ':' + json(value[k]));
+        return '{' + items.join(',') + '}';
     }
-    function rounded(mm) { return Math.round(mm * 1000) / 1000; }
-    function selectionData() {
-        if (app.documents.length < 1) throw Error("ابتدا یک سند Illustrator باز کنید");
+    function wrap(fn) {
+        try { return json(fn()); }
+        catch (error) { return json({ok:false, error:String(error.message || error)}); }
+    }
+    function selectedRoots() {
+        if (!app.documents.length) throw Error('سند Illustrator باز نیست');
         var doc = app.activeDocument, selected = doc.selection;
-        if (!selected || selected.length < 1) throw Error("ابتدا طرح یا گروه مورد نظر را انتخاب کنید");
-        var left = Infinity, right = -Infinity, top = -Infinity, bottom = Infinity;
-        for (var i = 0; i < selected.length; i++) {
-            var b = selected[i].visibleBounds;
-            if (!b || b.length !== 4) throw Error("نوع انتخاب برای خروجی SVG پشتیبانی نمی‌شود");
-            left = Math.min(left, b[0]); top = Math.max(top, b[1]);
-            right = Math.max(right, b[2]); bottom = Math.min(bottom, b[3]);
+        if (!selected || selected.length < 1) throw Error('ابتدا گروه یا طرح را انتخاب کنید');
+        var roots = [], i, item, ancestor, skip, safety;
+        for (i = 0; i < selected.length; i++) {
+            item = selected[i]; ancestor = item.parent; skip = false; safety = 0;
+            while (ancestor && safety++ < 60) {
+                for (var j = 0; j < selected.length; j++)
+                    if (ancestor === selected[j]) { skip = true; break; }
+                if (skip || ancestor.typename !== 'GroupItem') break;
+                ancestor = ancestor.parent;
+            }
+            if (!skip) roots.push(item);
         }
-        if (!(right > left && top > bottom)) throw Error("ابعاد انتخاب نامعتبر است");
-        var name = selected.length === 1 && selected[0].name ? String(selected[0].name) :
-                   String(doc.name).replace(/\.[^\.]+$/, "");
-        return { doc: doc, selected: selected, bounds: [left, top, right, bottom],
-            count: selected.length, name: name, width: rounded((right - left) * 25.4 / 72),
-            height: rounded((top - bottom) * 25.4 / 72) };
+        if (!roots.length) throw Error('آیتم قابل ارسال انتخاب نشده است');
+        return {doc:doc, roots:roots};
     }
-    function inspect() {
-        try {
-            var data = selectionData();
-            return respond({ok:true, name:data.name, count:data.count,
-                width_mm:data.width, height_mm:data.height});
-        } catch (e) {
-            return respond({ok:false, error:String(e.message || e)});
+    function directGroupChildren(group) {
+        var items = [], ungrouped = 0, children = group.pageItems;
+        for (var j = 0; j < children.length; j++) {
+            if (children[j].parent !== group) continue;
+            if (children[j].typename === 'GroupItem') items.push(children[j]);
+            else ungrouped++;
         }
+        return {groups:items, ungrouped:ungrouped};
     }
-    function exportSelection() {
-        var tempDoc = null, source = null, output = null;
+    function boundsFor(items) {
+        var left = Infinity, top = -Infinity, right = -Infinity, bottom = Infinity;
+        for (var i = 0; i < items.length; i++) {
+            var b = items[i].visibleBounds;
+            if (!b || b.length !== 4) throw Error('نوع آیتم برای محاسبه اندازه پشتیبانی نشد');
+            if (b[0] < left) left = b[0];
+            if (b[1] > top) top = b[1];
+            if (b[2] > right) right = b[2];
+            if (b[3] < bottom) bottom = b[3];
+        }
+        if (!(right > left && top > bottom)) throw Error('ابعاد طرح صفر یا نامعتبر است');
+        return [left,top,right,bottom];
+    }
+    function mm(v) { return Math.round(v * 25.4 / 72 * 1000) / 1000; }
+    function describe(id, name, items, parentName, depth) {
+        var b = boundsFor(items), selected = items[0], note = '';
+        try { if (items.length === 1 && selected.note) note = String(selected.note); } catch (_) {}
+        return {id:id, name:String(name || id), source_note:note,
+            parent_name:String(parentName || ''), depth:depth, item_count:items.length,
+            width_mm:mm(b[2] - b[0]), height_mm:mm(b[1] - b[3]),
+            signature:[mm(b[2] - b[0]),mm(b[1] - b[3]),String(name || id)].join(':'),
+            _items:items};
+    }
+    function collect(mode) {
+        var source = selectedRoots(), roots = source.roots, items = [], parents = [];
+        mode = String(mode || 'smart');
+        if (['smart','each','children','one'].indexOf(mode) < 0) throw Error('حالت انتخاب نامعتبر است');
+        if (mode === 'one') {
+            items.push(describe('all', source.doc.name, roots, '', 0));
+            return {source:source, mode:mode, items:items};
+        }
+        var autoSplit = mode === 'smart' && roots.length === 1 &&
+            roots[0].typename === 'GroupItem';
+        if (autoSplit) {
+            var direct = directGroupChildren(roots[0]);
+            autoSplit = direct.groups.length >= 2 && direct.ungrouped === 0;
+        }
+        var split = mode === 'children' || autoSplit;
+        for (var i = 0; i < roots.length; i++) {
+            var root = roots[i], name = String(root.name || 'طرح ' + (i + 1)), id = 's' + i;
+            if (split && root.typename === 'GroupItem') {
+                var children = directGroupChildren(root);
+                if (children.ungrouped) {
+                    throw Error('گروه «' + name + '» شامل اشیای بدون گروه در سطح خانواده است. آن‌ها را گروه‌بندی کنید یا حالت «هر گروه انتخابی» را برگزینید.');
+                }
+                if (!children.groups.length) {
+                    items.push(describe(id, name, [root], '', 0));
+                    continue;
+                }
+                for (var j = 0; j < children.groups.length; j++) {
+                    var child = children.groups[j];
+                    items.push(describe(id + '/g' + j,
+                        String(child.name || 'طرح ' + (j + 1)), [child], name, 1));
+                }
+                parents.push(name);
+            } else {
+                items.push(describe(id, name, [root], '', 0));
+            }
+        }
+        if (!items.length) throw Error('گروه قابل ارسال شناسایی نشد');
+        if (items.length > 1000) throw Error('بیش از ۱۰۰۰ طرح انتخاب شده است؛ انتخاب را کوچک‌تر کنید');
+        return {source:source, mode:mode, items:items, parents:parents};
+    }
+    function describePublic(entry) {
+        return {id:entry.id, name:entry.name, source_note:entry.source_note,
+            parent_name:entry.parent_name, depth:entry.depth, item_count:entry.item_count,
+            width_mm:entry.width_mm, height_mm:entry.height_mm, signature:entry.signature};
+    }
+    function inspectBatch(mode) {
+        return wrap(function () {
+            var data = collect(mode), result = [];
+            for (var i = 0; i < data.items.length; i++) result.push(describePublic(data.items[i]));
+            return {ok:true, mode:data.mode, count:result.length,
+                doc_name:data.source.doc.name, items:result};
+        });
+    }
+    function exportSingle(entry, doc) {
+        var tempDoc = null, output = null, source = doc;
         try {
-            var data = selectionData();
-            source = data.doc;
             tempDoc = app.documents.add(DocumentColorSpace.RGB);
             var target = tempDoc.layers[0];
-            for (var i = 0; i < data.selected.length; i++) {
-                data.selected[i].duplicate(target, ElementPlacement.PLACEATEND);
+            for (var i = 0; i < entry._items.length; i++)
+                entry._items[i].duplicate(target, ElementPlacement.PLACEATEND);
+            var copies = [], pages = target.pageItems;
+            for (var j = 0; j < pages.length; j++) {
+                if (pages[j].parent === target) copies.push(pages[j]);
             }
-            /* Cross-document duplication can shift origins. Fit to the actual
-               duplicated artwork rather than the source artboard. */
-            var bLeft = Infinity, bRight = -Infinity, bTop = -Infinity, bBottom = Infinity;
-            for (var j = 0; j < target.pageItems.length; j++) {
-                var b = target.pageItems[j].visibleBounds;
-                bLeft = Math.min(bLeft, b[0]); bTop = Math.max(bTop, b[1]);
-                bRight = Math.max(bRight, b[2]); bBottom = Math.min(bBottom, b[3]);
-            }
-            if (!(bRight > bLeft && bTop > bBottom)) throw Error("ناحیه خروجی معتبر نیست");
-            tempDoc.artboards[0].artboardRect = [bLeft, bTop, bRight, bBottom];
-            var stamp = new Date().getTime() + "_" + Math.floor(Math.random() * 1000000);
-            output = File(Folder.temp.fsName + "/pardach_selected_" + stamp + ".svg");
+            if (!copies.length) throw Error('آیتمی در سند موقت کپی نشد');
+            tempDoc.artboards[0].artboardRect = boundsFor(copies);
+            output = File(Folder.temp.fsName + '/pardach_batch_' +
+                new Date().getTime() + '_' + Math.floor(Math.random() * 1000000000) + '.svg');
             var options = new ExportOptionsSVG();
             options.embedRasterImages = true;
             options.coordinatePrecision = 6;
             tempDoc.exportFile(output, ExportType.SVG, options);
-            if (!output.exists) throw Error("خروجی SVG موقت ساخته نشد");
-            return respond({ok:true, path:output.fsName, name:data.name,
-                count:data.count, width_mm:data.width, height_mm:data.height});
-        } catch (e) {
-            if (output && output.exists) { try { output.remove(); } catch (_) {} }
-            return respond({ok:false, error:String(e.message || e)});
+            if (!output.exists) throw Error('فایل SVG ایجاد نشد');
+            return {id:entry.id, ok:true, path:output.fsName, signature:entry.signature,
+                width_mm:entry.width_mm, height_mm:entry.height_mm};
+        } catch (error) {
+            if (output && output.exists) try { output.remove(); } catch (_) {}
+            return {id:entry.id, ok:false, error:String(error.message || error)};
         } finally {
-            if (tempDoc) { try { tempDoc.close(SaveOptions.DONOTSAVECHANGES); } catch (_) {} }
-            if (source) { try { source.activate(); } catch (_) {} }
+            if (tempDoc) try { tempDoc.close(SaveOptions.DONOTSAVECHANGES); } catch (_) {}
+            if (source) try { source.activate(); } catch (_) {}
         }
     }
-    return {inspect: inspect, exportSelection: exportSelection};
+    function exportBatch(mode, ids) {
+        return wrap(function () {
+            var data = collect(mode), requested = String(ids || '').split('|'), results = [];
+            if (!requested.length || requested.length > 12) throw Error('حداکثر ۱۲ طرح در هر نوبت خروجی‌گیری می‌شود');
+            var byId = {}, requestedId, e;
+            for (var i = 0; i < data.items.length; i++) byId[data.items[i].id] = data.items[i];
+            for (var j = 0; j < requested.length; j++) {
+                requestedId = requested[j];
+                if (!/^(all|s[0-9]+(\/g[0-9]+)?)$/.test(requestedId))
+                    throw Error('شناسه طرح نامعتبر است');
+                e = byId[requestedId];
+                if (!e) { results.push({id:requestedId, ok:false,
+                    error:'انتخاب تغییر کرده است؛ دوباره بررسی کنید'}); continue; }
+                results.push(exportSingle(e, data.source.doc));
+            }
+            return {ok:true, results:results, doc_name:data.source.doc.name};
+        });
+    }
+    return {inspectBatch:inspectBatch, exportBatch:exportBatch};
 }());
