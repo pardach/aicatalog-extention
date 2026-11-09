@@ -191,14 +191,14 @@ function element(type,klass,txt){
 }
 function inputField(parent,label,value,update,max) {
     var div=element('div'),lab=element('label',null,label),inp=element('input');
-    inp.value=value||'';if(max)inp.maxLength=max;
+    inp.value=value||'';if(max)inp.maxLength=max;inp.disabled=state.busy;
     inp.addEventListener('change',function(){update(inp.value);countSummary();});
     div.appendChild(lab);div.appendChild(inp);parent.appendChild(div);return inp;
 }
 function selectField(parent,label,value,update) {
     var div=element('div'),lab=element('label',null,label),select=element('select');
     KIND_LABELS.forEach(function(pair){var o=element('option',null,pair[1]);o.value=pair[0];select.appendChild(o);});
-    select.value=value||'';
+    select.value=value||'';select.disabled=state.busy;
     select.addEventListener('change',function(){update(select.value);countSummary();});
     div.appendChild(lab);div.appendChild(select);parent.appendChild(div);
 }
@@ -206,7 +206,7 @@ function row(item) {
     var card=element('div','design'+(item.status==='error'?' error':item.status==='done'?' done':''));
     var top=element('div','top'),checkbox=element('input');
     checkbox.type='checkbox';checkbox.checked=!!item.checked;
-    checkbox.disabled=item.status==='done';
+    checkbox.disabled=item.status==='done'||state.busy;
     checkbox.setAttribute('aria-label','انتخاب '+item.title);
     checkbox.addEventListener('change',function(){item.checked=checkbox.checked;countSummary();});
     top.appendChild(checkbox);
@@ -226,6 +226,7 @@ function row(item) {
     inputField(details,'کالکشن',item.collection,function(v){item.collection=v;},120);
     inputField(details,'شرح طرح',item.description,function(v){item.description=v;},2000);
     card.appendChild(details);
+    expand.disabled=state.busy;
     expand.addEventListener('click',function(){
         details.hidden=!details.hidden;expand.textContent=details.hidden?'اطلاعات بیشتر':'بستن جزئیات';
     });
@@ -267,22 +268,30 @@ function setChecks(filter) {
     state.items.forEach(function(item){item.checked=item.status!=='done'&&filter(item);});
     render();
 }
-function safeTempRead(tempPath){
+function safeTempPath(tempPath) {
     var p=path.resolve(String(tempPath||'')),temp=fs.realpathSync(os.tmpdir());
     if(path.dirname(p)!==temp||!/^pardach_batch_[0-9]+_[0-9]+\.svg$/i.test(path.basename(p)))
         throw Error('مسیر فایل موقت معتبر نیست');
+    return p;
+}
+function cleanupTemp(tempPath) {
+    try {
+        var p=safeTempPath(tempPath);
+        if(fs.existsSync(p)&&!fs.lstatSync(p).isSymbolicLink())fs.unlinkSync(p);
+    } catch (_) {}
+}
+function safeTempRead(tempPath) {
+    var p=safeTempPath(tempPath);
+    try {
     var stat=fs.lstatSync(p);
     if(!stat.isFile()||stat.isSymbolicLink()||stat.size>20*1024*1024||stat.size<50)
         throw Error('فایل SVG موقت نامعتبر یا بیش از ۲۰ مگابایت است');
-    try {
         var bytes=fs.readFileSync(p),svg=bytes.toString('utf8');
         if(!/<svg\b/i.test(svg))throw Error('فایل خروجی SVG نیست');
         if(/<(?:image|use)\b[^>]*(?:xlink:)?href\s*=\s*["'](?:https?:|file:|\.\.?\/)/i.test(svg))
             throw Error('لینک خارجی در SVG وجود دارد؛ ابتدا Embed کنید');
         return bytes;
-    } finally {
-        try {fs.unlinkSync(p);}catch(_){}
-    }
+    } finally {cleanupTemp(tempPath);}
 }
 function meta(item,filename){
     return {file_name:filename,title:item.title.trim(),code:item.code.trim(),
@@ -319,6 +328,7 @@ async function submitChunk(chunk) {
                 item.status='duplicate';item.error='طرح یکسان در همین دسته انتخاب شده است';
             }else{prepared.push(ready);known[ready.hash]=true;}
         }catch(e){
+            cleanupTemp(output.path);
             item.status='error';item.error=e.message;
         }
     });
