@@ -89,12 +89,13 @@ var PardachDirectUpload = (function () {
             items.push(describe('all', source.doc.name, roots, '', 0));
             return {source:source, mode:mode, items:items};
         }
-        var autoSplit = mode === 'smart' && roots.length === 1 &&
-            roots[0].typename === 'GroupItem';
-        if (autoSplit) {
-            var direct = directGroupChildren(roots[0]), parentName = asciiDigits(roots[0].name || '');
+        function isFamilyContainer(root) {
+            if (root.typename !== 'GroupItem') return false;
+            var direct = directGroupChildren(root), parentName = asciiDigits(root.name || '');
+            if (direct.groups.length < 2 || direct.ungrouped) return false;
             var explicitFamily = /^(?:family|fam|خانواده|set|ست)[\\s:_-]*[a-z0-9_-]+/i.test(parentName) ||
                 /^(?:f)?[0-9]+$/i.test(parentName);
+            if (explicitFamily) return true;
             var memberPatternCount = 0, sharedCode = '', allSameCode = true;
             for (var k = 0; k < direct.groups.length; k++) {
                 var childName = asciiDigits(direct.groups[k].name || '');
@@ -105,12 +106,11 @@ var PardachDirectUpload = (function () {
                     sharedCode = match[1];
                 }
             }
-            autoSplit = direct.groups.length >= 2 && direct.ungrouped === 0 &&
-                (explicitFamily || (memberPatternCount === direct.groups.length && allSameCode));
+            return memberPatternCount === direct.groups.length && allSameCode;
         }
-        var split = mode === 'children' || autoSplit;
         for (var i = 0; i < roots.length; i++) {
             var root = roots[i], name = String(root.name || 'طرح ' + (i + 1)), id = 's' + i;
+            var split = mode === 'children' || (mode === 'smart' && isFamilyContainer(root));
             if (split && root.typename === 'GroupItem') {
                 var children = directGroupChildren(root);
                 if (children.ungrouped) {
