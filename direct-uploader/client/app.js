@@ -126,14 +126,20 @@ async function login(){
     $('loginBox').hidden=true;$('uploadBox').hidden=false;
     message('متصل شد. طرح‌ها را در Illustrator انتخاب و بررسی کنید.','ok');
 }
+function normalizeDigits(value) {
+    return String(value||'').replace(/[۰-۹٠-٩]/g,function(ch){
+        var n=ch.charCodeAt(0);
+        return String(n>=0x6F0 && n<=0x6F9?n-0x6F0:n-0x660);
+    });
+}
 function suggestion(info) {
     var original=String(info.name||'').trim(),name=original.replace(/\.(ai|svg)$/i,'').trim();
     var parent=String(info.parent_name||'').trim(),family='',kind='';
-    var parentMatch=parent.match(/^(?:(?:family|fam|خانواده)[\s:_-]*)?([a-z0-9][a-z0-9_-]{0,119})$/i);
+    var parentMatch=normalizeDigits(parent).match(/^(?:(?:family|fam|خانواده)[\s:_-]*)?([a-z0-9][a-z0-9_-]{0,119})$/i);
     // Avoid turning arbitrary words into family keys.
     if(parentMatch && (/^\d+$/.test(parentMatch[1]) || /^f\d+$/i.test(parentMatch[1]) ||
         /^(?:family|fam|خانواده)/i.test(parent)))family=parentMatch[1];
-    var compact=name.match(/^(\d{1,10})(r\d*|k|g|b|t|d)$/i);
+    var compact=normalizeDigits(name).match(/^(\d{1,10})(r\d*|k|g|b|t|d)$/i);
     if(compact){
         family=compact[1];
         var marker=compact[2].charAt(0).toLowerCase();
@@ -142,7 +148,7 @@ function suggestion(info) {
     var note=String(info.source_note||''),noteMetadata={};
     if(note.charAt(0)==='{')try{noteMetadata=JSON.parse(note)||{};}catch(_){}
     if(noteMetadata.family_key&&/^[a-z0-9][a-z0-9_-]{0,119}$/i.test(noteMetadata.family_key))
-        family=noteMetadata.family_key;
+        family=normalizeDigits(noteMetadata.family_key);
     if(noteMetadata.design_kind && KIND_LABELS.some(function(k){return k[0]===noteMetadata.design_kind;}))
         kind=noteMetadata.design_kind;
     if(kind==='tool')family='';
@@ -217,7 +223,7 @@ function row(item) {
         ' mm | '+(item.parent_name?'خانواده/گروه: '+item.parent_name+' | ':'')+item.id));
     var fields=element('div','linefields');
     selectField(fields,'نوع',item.kind,function(v){item.kind=v;if(v==='tool')item.family='';render();});
-    inputField(fields,'کد خانواده',item.family,function(v){item.family=v.trim();},120);
+    inputField(fields,'کد خانواده',item.family,function(v){item.family=normalizeDigits(v.trim());},120);
     card.appendChild(fields);
     var details=element('div','details');details.hidden=true;
     inputField(details,'نام کامل',item.title,function(v){item.title=v;title.textContent=v;},255);
@@ -250,7 +256,7 @@ function render(){
     $('nextBtn').disabled=state.busy||state.page>=pages-1;
 }
 function bulkApply(){
-    var kind=$('bulkKind').value,family=$('bulkFamily').value.trim(),
+    var kind=$('bulkKind').value,family=normalizeDigits($('bulkFamily').value.trim()),
         tags=$('bulkTags').value.trim(),collection=$('bulkCollection').value.trim();
     if(family && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/.test(family))throw Error('کد خانواده نامعتبر است');
     var changed=0;
