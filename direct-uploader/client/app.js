@@ -217,7 +217,17 @@ function row(item) {
     checkbox.addEventListener('change',function(){item.checked=checkbox.checked;countSummary();});
     top.appendChild(checkbox);
     var title=element('div','name',item.title);top.appendChild(title);
-    var expand=element('button','secondary tiny auto','اطلاعات بیشتر');top.appendChild(expand);
+    var focusBtn=element('button','secondary tiny auto','نمایش');
+    focusBtn.disabled=state.busy;
+    focusBtn.addEventListener('click',function(){
+        run(async function(){
+            await callHost('PardachDirectUpload.focus('+
+                JSON.stringify(state.mode)+','+JSON.stringify(item.id)+')');
+            message('طرح «'+item.title+'» در Illustrator نمایش داده شد.','ok');
+        });
+    });
+    top.appendChild(focusBtn);
+    var expand=element('button','secondary tiny auto','جزئیات');top.appendChild(expand);
     card.appendChild(top);
     card.appendChild(element('div','mini',item.width_mm+' × '+item.height_mm+
         ' mm | '+(item.parent_name?'خانواده/گروه: '+item.parent_name+' | ':'')+item.id));
