@@ -16,6 +16,7 @@ assert.deepEqual(flower.family_codes,['g001','f140']);
 assert.deepEqual(flower.tags,['بلوچی','گل']);
 assert.equal(flower.description,'نقش اصلی خانواده');
 assert.equal(flower.era,'قدیمی');
+assert.equal(flower.legacy_created_at,'2025-01-01');
 assert.equal(flower.collection,'سرباز');
 assert.equal(flower.source,'legacy_symbol_note');
 
