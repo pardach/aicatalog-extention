@@ -163,7 +163,8 @@ function suggestion(info) {
         content_tags:legacy.content_tags||[],
         description:legacy.description||'',
         collection:legacy.collection||'',
-        era:legacy.era||'',rating:legacy.rating,label:legacy.label||'',
+        era:legacy.era||'',legacy_created_at:legacy.legacy_created_at||'',
+        rating:legacy.rating,label:legacy.label||'',
         legacy_source:legacy.source||'selection',legacy_warnings:legacy.warnings||[],
         width_mm:info.width_mm,height_mm:info.height_mm,signature:info.signature,
         parent_name:parent,checked:true,status:'pending',error:''
@@ -266,6 +267,7 @@ function row(item) {
     inputField(details,'کد/شناسه طرح',item.code,function(v){item.code=v;},160);
     inputField(details,'برچسب‌ها (ویرگول)',item.tags,function(v){item.tags=v;},400);
     inputField(details,'کالکشن',item.collection,function(v){item.collection=v;},120);
+    inputField(details,'دوره / قدمت',item.era,function(v){item.era=v;},80);
     inputField(details,'شرح طرح',item.description,function(v){item.description=v;},2000);
     if(item.legacy_source==='legacy_symbol_note'||item.legacy_source==='symbol_note')
         details.appendChild(element('div','mini','اطلاعات از Symbol Note کاتالوگ قدیمی خوانده شده است.'));
@@ -354,7 +356,8 @@ function meta(item,filename){
         height:Math.round(item.height_mm*100)/1000,unit:'cm',
         keywords:[],content_tags:item.tags.split(/[,،]/).map(function(s){return s.trim();}).filter(Boolean).slice(0,20),
         collection:item.collection.trim(),description:item.description.trim(),
-        era:item.era||'',rating:item.rating,label:item.label,
+        era:item.era||'',legacy_created_at:item.legacy_created_at||'',
+        rating:item.rating,label:item.label,
         legacy_source:item.legacy_source||'selection',
         source:'illustrator-direct-uploader'};
 }
