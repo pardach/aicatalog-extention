@@ -195,5 +195,25 @@ var PardachDirectUpload = (function () {
             return {ok:true, results:results, doc_name:data.source.doc.name};
         });
     }
-    return {inspectBatch:inspectBatch, exportBatch:exportBatch};
+    function focus(mode, requestedId) {
+        return wrap(function() {
+            var data=collect(mode), found=null;
+            for (var i=0; i<data.items.length; i++) {
+                if(data.items[i].id===String(requestedId||'')) {found=data.items[i];break;}
+            }
+            if(!found)throw Error('طرح در انتخاب فعلی پیدا نشد؛ دوباره بررسی کنید');
+            var b=boundsFor(found._items), view=data.source.doc.activeView;
+            var bounds=view.bounds, oldZoom=view.zoom;
+            var targetW=b[2]-b[0], targetH=b[1]-b[3];
+            if(bounds && bounds.length===4 && targetW>0 && targetH>0) {
+                var screenW=Math.abs(bounds[2]-bounds[0]), screenH=Math.abs(bounds[1]-bounds[3]);
+                var scale=Math.min(screenW/targetW,screenH/targetH)*0.72;
+                if(isFinite(scale) && scale>0)
+                    view.zoom=Math.max(0.25,Math.min(16,oldZoom*scale));
+            }
+            view.centerPoint=[(b[0]+b[2])/2,(b[1]+b[3])/2];
+            return {ok:true,id:found.id};
+        });
+    }
+    return {inspectBatch:inspectBatch, exportBatch:exportBatch, focus:focus};
 }());
