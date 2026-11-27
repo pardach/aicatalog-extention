@@ -2,7 +2,7 @@
 <ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    ExtensionBundleId="com.yourcompany.newextension"
                    ExtensionBundleVersion="1.0.0"
-                   Version="11.0">
+                   Version="7.0">
 
   <ExtensionList>
     <Extension Id="com.yourcompany.newextension.panel" Version="1.0.0"/>
@@ -10,13 +10,13 @@
 
   <ExecutionEnvironment>
     <HostList>
-      <Host Name="ILST" Version="[17.0,30.0]"/>
+      <Host Name="ILST" Version="[23.0,99.9]"/>
     </HostList>
     <LocaleList>
       <Locale Code="All"/>
     </LocaleList>
     <RequiredRuntimeList>
-      <RequiredRuntime Name="CSXS" Version="11.0"/>
+      <RequiredRuntime Name="CSXS" Version="9.0"/>
     </RequiredRuntimeList>
   </ExecutionEnvironment>
 
@@ -28,10 +28,10 @@
           <ScriptPath>./host/script.jsx</ScriptPath>
           <CEFCommandLine>
             <Parameter>--enable-nodejs</Parameter>
-            <Parameter>--enable-logging</Parameter>
-            <Parameter>--log-level=0</Parameter>
-            <Parameter>--enable-dev-tools</Parameter>
-            <Parameter>--remote-debugging-port=9222</Parameter>
+
+
+
+
             <Parameter>--user-data-dir=./cef-user-data</Parameter>
           </CEFCommandLine>
         </Resources>
@@ -59,9 +59,9 @@
           </Geometry>
           <Icons>
             <Icon Type="Normal">./icons/normal.png</Icon>
-            <Icon Type="RollOver">./icons/rollover.png</Icon>
-            <Icon Type="DarkNormal">./icons/darknormal.png</Icon>
-            <Icon Type="DarkRollOver">./icons/darkrollover.png</Icon>
+
+
+
           </Icons>
         </UI>
       </DispatchInfo>

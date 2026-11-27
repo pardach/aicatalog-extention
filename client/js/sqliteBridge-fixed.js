@@ -1,6 +1,12 @@
 // SQLite Bridge بهبود یافته برای Vector Catalog Extension
 // مدیریت پایگاه داده SQLite با استفاده از sql.js
 
+function readCount(result) {
+    var first = result && result[0];
+    var row = first && first.values && first.values[0];
+    return (row && row[0]) || 0;
+}
+
 let db = null;
 let allTags = [];
 let selectedTags = [];
@@ -675,9 +681,9 @@ function getSyncStatus() {
         const tagsResult = db.exec("SELECT COUNT(*) FROM tags");
 
         return {
-            designs: designsResult[0]?.values[0][0] || 0,
-            families: familiesResult[0]?.values[0][0] || 0,
-            tags: tagsResult[0]?.values[0][0] || 0
+            designs: readCount(designsResult),
+            families: readCount(familiesResult),
+            tags: readCount(tagsResult)
         };
 
     } catch (error) {

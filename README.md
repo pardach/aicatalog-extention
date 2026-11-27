@@ -32,8 +32,8 @@
 ## 🛠️ نصب و راه‌اندازی
 
 ### پیش‌نیازها
-- Adobe Illustrator CC 2018 یا بالاتر
-- Windows 10/11 یا macOS 10.14+
+- Adobe Illustrator 2019 (23.x) یا بالاتر، مشروط به پشتیبانی CEP و قبولی تست واقعی
+- Windows 10/11 (نصب آزمایشی؛ macOS هنوز بسته نصب تأییدشده ندارد)
 
 ### مراحل نصب
 1. **دانلود**: کلون کردن ریپازیتوری
@@ -42,13 +42,10 @@ git clone https://github.com/pardach/aicatalog-extention.git
 ```
 
 2. **نصب**: اجرای فایل نصب
-```bash
-# Windows
+```bat
 install.bat
-
-# macOS
-./install.sh
 ```
+نسخه سورس امضانشده است؛ نصب‌کننده با تأیید کاربر Debug Mode را برای CEP 9 تا 12 فعال می‌کند. پیش از نصب همه نسخه‌های Illustrator را ببندید. نسخه قبلی خارج از مسیر CEP پشتیبان‌گیری می‌شود.
 
 3. **فعال‌سازی**: 
    - باز کردن Illustrator
@@ -170,4 +167,6 @@ new-illustrator-extension/
 
 **نسخه**: 1.0.0  
 **آخرین بروزرسانی**: 2025  
-**وضعیت**: ✅ آماده تولید
+**وضعیت**: در حال توسعه؛ نیازمند تست واقعی Illustrator
+
+[نقشه راه و معیارهای پذیرش](docs/STUDIO_SET_CONNECTOR_ROADMAP.md)
