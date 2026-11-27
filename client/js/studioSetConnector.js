@@ -79,6 +79,12 @@
             return Promise.reject(new Error('Invalid facet query'));
         return this._request('GET','facets?field='+encodeURIComponent(field)+'&q='+encodeURIComponent(query)+'&offset='+offset+'&limit='+limit);
     };
+    // Availability is advisory, not a reservation. Repeat at upload commit.
+    Connector.prototype.checkIdentity = function (family, name, role) {
+        if (![family,name,role].every(function(v){return typeof v==='string' && v.length<=200;}))
+            return Promise.reject(new Error('Invalid identity query'));
+        return this._request('GET','identity?family='+encodeURIComponent(family)+'&name='+encodeURIComponent(name)+'&role='+encodeURIComponent(role));
+    };
     Connector.prototype.revoke = function () {
         var self = this;
         return self._request('POST', 'revoke').then(function (data) { self.clearToken(); return data; }, function (error) { self.clearToken(); throw error; });

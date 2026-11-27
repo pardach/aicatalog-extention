@@ -1,0 +1,5 @@
+# Identity and classification extension contract
+
+Use checkIdentity(family, name, role) before reviewing an upload. The response reports existing visible family number, normalized filename/title/family label and role conflicts and suggests a next number. Never silently attach to an existing family. Ask the designer to explicitly choose new family or complete existing family. The suggested number is not reserved; authoritative atomic commit is a future server gate. The scope is the authenticated Studio view, not all private records or a globally verified publication namespace.
+
+Review rows carry design_age (unknown/new/old) and is_curated_popular (boolean). Both can be set with existing bulk and per-row edit functions. A design can be old and popular. Preserve real popularity metrics independently. No visible panel or write endpoint in this PR; server counterpart branch feat/catalog-identity-classification in Setoffline.
