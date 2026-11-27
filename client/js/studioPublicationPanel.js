@@ -22,6 +22,7 @@ function sync(){
     $('ssPending').hidden=!pending;
     $('ssRetry').disabled=busy||!cap||!pending||connector.origin!==pending.origin||account!==pending.account;
     $('ssConnect').disabled=busy;
+    $('ssClose').disabled=busy;
     $('ssDisconnect').disabled=busy;
     $('ssAccount').disabled=busy;
     $('ssOrigin').disabled=busy||!!claim||!!pending;
@@ -106,7 +107,7 @@ function sendPending(){
     var attempt=pending;
     if(!attempt||!connector||attempt.origin!==connector.origin||attempt.account!==account)throw Error('به همان حساب و سرور متصل شوید');
     return connector.publish(attempt.payload).then(function(result){
-        if(!Array.isArray(result.assets)||result.assets.length!==attempt.payload.items.length)throw Error('پاسخ ثبت نامعتبر؛ وضعیت نامشخص است');
+        if(!Array.isArray(result.assets)||result.assets.length!==attempt.payload.items.length){attempt.uncertain=true;throw Error('پاسخ ثبت نامعتبر؛ وضعیت نامشخص است');}
         pending=null;claim=null;rows=[];renderRows();
         status('ثبت موفق: '+result.assets.map(function(a){return a.name;}).join('، '));
     },function(e){
@@ -161,6 +162,7 @@ $('ssApply').onclick=function(){var patch={},content=$('ssBulkContent').value,ta
 };
 $('ssPublish').onclick=function(){task(function(){
     if(pending)throw Error('ابتدا نتیجه ثبت قبلی را مشخص کنید');
+    if(!cap||!cap.operations||!cap.operations.upload)throw Error('مجوز ثبت در سرور فعال نیست');
     var mode=$('ssMode').value,key=mode==='standalone'?'':familyNumber($('ssFamily').value);
     if(mode!=='standalone'&&!/^[1-9]\d{0,8}$/.test(key))throw Error('شماره خانواده معتبر وارد کنید');
     if(mode==='new_family'&&(!claim||claim.family_key!==key||claim.expires_at*1000<=Date.now()))throw Error('ابتدا شماره خانواده را رزرو کنید؛ رزرو منقضی را آزاد کنید.');

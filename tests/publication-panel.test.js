@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('assert'),path=require('path');
+const root=path.join(__dirname,'..','client');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const js=fs.readFileSync(path.join(root,'js','studioPublicationPanel.js'),'utf8');
+const ids=[];const re=/\$\('([^']+)'\)/g;let match;while((match=re.exec(js)))ids.push(match[1]);
+ids.forEach(id=>assert(html.includes('id="'+id+'"'),'Missing '+id));
+assert(html.includes('js/studioPublicationPanel.js'));
+assert(js.includes('connector.publish(attempt.payload)'));
+assert(js.includes('attempt.origin!==connector.origin'));
+assert(js.includes('attempt.uncertain=true'));
+assert(!/\.innerHTML\s*=/.test(js));
+assert(!/localStorage|sessionStorage/.test(js));
+console.log('Panel wiring checks passed; CEP integration still required.');
