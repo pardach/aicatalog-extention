@@ -1,0 +1,14 @@
+const assert=require('assert');
+const exporter=require('../client/js/studioSetSvgExport');
+const normalize=exporter.normalizeSvg;
+const sample='<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="72px" height="36px" viewBox="0 0 72 36"><g><path d="M0 0L72 36"/></g></svg>';
+const svg=normalize(sample,2.54,1.27);
+assert(svg.includes('width="2.54000000cm"'));
+assert(svg.includes('height="1.27000000cm"'));
+assert(svg.includes('viewBox="0 0 72 36"'));
+assert(svg.includes('<g><path d="M0 0L72 36"/></g>'));
+assert(!svg.includes('72px'));
+assert.throws(()=>normalize(sample,2.54,2.54));
+assert.throws(()=>normalize('<svg width="72"/>',2.54,1.27));
+assert.throws(()=>normalize(sample,0,1));
+console.log('SVG physical-size normalization checks passed; Illustrator host requires manual testing.');
