@@ -1,0 +1,3 @@
+# Family reservation client
+
+Server counterpart: Setoffline branch feat/catalog-family-reservation. reserveFamily(family,name) requests a 15-minute claim (empty family chooses next number); releaseFamily(reservationId) relinquishes it. Respect capabilities.operations.reserve_family. Keep reservation IDs in memory and never log them. HTTP 409 is exposed as error.status and error.code; refresh current data and ask the user to choose a new number, never silently retry with another number. Expiry is server-authoritative. No upload or commit integration yet, no panel wiring, no global uniqueness guarantee. Actual website/desktop integration and final atomic catalog publication remain release blockers. Tests: node tests/family-reservation.test.js.

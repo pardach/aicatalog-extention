@@ -28,15 +28,18 @@
     };
     Connector.prototype.clearToken = function () { this.token = ''; };
     Connector.prototype.accountUrl = function () { return this.origin + '/account/illustrator-connector'; };
-    Connector.prototype._request = function (method, path) {
+    Connector.prototype._request = function (method, path, payload) {
         var self = this;
         return new Promise(function (resolve, reject) {
             if (!self.token) return reject(new Error('Connector token required'));
+            var body = payload === undefined ? null : JSON.stringify(payload);
+            var headers = {Authorization: 'Bearer ' + self.token, Accept: 'application/json'};
+            if (body !== null) { headers['Content-Type']='application/json'; headers['Content-Length']=Buffer.byteLength(body,'utf8'); }
             var request = self.https.request({
                 hostname: self.hostname, port: self.port, method: method,
                 path: PREFIX + path,
                 rejectUnauthorized: true,
-                headers: {Authorization: 'Bearer ' + self.token, Accept: 'application/json'}
+                headers: headers
             }, function (response) {
                 var status = response.statusCode;
                 if (status >= 300 && status < 400) {
@@ -53,7 +56,15 @@
                 });
                 response.on('end', function () {
                     if (status === 401) self.clearToken();
-                    if (status < 200 || status >= 300) return reject(new Error('Connector HTTP ' + status));
+                    if (status < 200 || status >= 300) {
+                        var error = new Error('Connector HTTP ' + status);
+                        error.status = status;
+                        try {
+                            var details = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+                            if (details.api_version === 1 && details.error && typeof details.error.code === 'string') error.code = details.error.code;
+                        } catch (ignored) {}
+                        return reject(error);
+                    }
                     try {
                         var data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
                         if (data.api_version !== 1) throw new Error('Unsupported connector API');
@@ -63,6 +74,7 @@
             });
             request.setTimeout(15000, function () { request.destroy(); reject(new Error('Connector timeout')); });
             request.on('error', reject);
+            if (body !== null) request.write(body,'utf8');
             request.end();
         });
     };
@@ -84,6 +96,16 @@
         if (![family,name,role].every(function(v){return typeof v==='string' && v.length<=200;}))
             return Promise.reject(new Error('Invalid identity query'));
         return this._request('GET','identity?family='+encodeURIComponent(family)+'&name='+encodeURIComponent(name)+'&role='+encodeURIComponent(role));
+    };
+    Connector.prototype.reserveFamily = function (family, name) {
+        if (typeof family !== 'string' || family.length>200 || typeof name !== 'string' || name.length>200)
+            return Promise.reject(new Error('Invalid family reservation'));
+        return this._request('POST','family-reservations',{family:family,name:name});
+    };
+    Connector.prototype.releaseFamily = function (reservationId) {
+        if (typeof reservationId !== 'string' || !reservationId || reservationId.length>100)
+            return Promise.reject(new Error('Invalid reservation ID'));
+        return this._request('POST','family-reservations/release',{reservation_id:reservationId});
     };
     Connector.prototype.revoke = function () {
         var self = this;
