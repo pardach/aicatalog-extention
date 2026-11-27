@@ -100,7 +100,7 @@
             else if(/^rakab_\d+$/.test(row.family_role))suffix='r'+row.family_role.split('_')[1];
             else if(/^(darzi|tek|vol)_\d+$/.test(row.family_role))suffix+=row.family_role.split('_')[1];
             name=row.family_key+suffix+'.svg';
-        }else name='design-'+row.id+'.svg';
+        }else name='design-'+(source.file_hash||'').slice(0,20)+'-'+row.id+'.svg';
         return {name:name,title:row.title,design_kind:row.design_kind,family_key:row.family_key,
             family_role:row.family_role,tags:tags(row.tags),content_tags:tags(row.content_tags),
             xmp_keywords:tags(row.tags.concat(row.content_tags)),xmp_rating:row.xmp_rating,xmp_label:row.xmp_label,

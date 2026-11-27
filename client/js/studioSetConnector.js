@@ -28,15 +28,19 @@
     };
     Connector.prototype.clearToken = function () { this.token = ''; };
     Connector.prototype.accountUrl = function () { return this.origin + '/account/illustrator-connector'; };
-    Connector.prototype._request = function (method, path) {
+    Connector.prototype._request = function (method, path, payload) {
         var self = this;
         return new Promise(function (resolve, reject) {
             if (!self.token) return reject(new Error('Connector token required'));
+            var body = payload ? JSON.stringify(payload) : null;
+            if (body && Buffer.byteLength(body,'utf8') > 28*1024*1024) return reject(new Error('Upload exceeds request limit'));
+            var headers = {Authorization: 'Bearer ' + self.token, Accept: 'application/json'};
+            if (body) { headers['Content-Type']='application/json'; headers['Content-Length']=Buffer.byteLength(body,'utf8'); }
             var request = self.https.request({
                 hostname: self.hostname, port: self.port, method: method,
                 path: PREFIX + path,
                 rejectUnauthorized: true,
-                headers: {Authorization: 'Bearer ' + self.token, Accept: 'application/json'}
+                headers: headers
             }, function (response) {
                 var status = response.statusCode;
                 if (status >= 300 && status < 400) {
@@ -53,7 +57,11 @@
                 });
                 response.on('end', function () {
                     if (status === 401) self.clearToken();
-                    if (status < 200 || status >= 300) return reject(new Error('Connector HTTP ' + status));
+                    if (status < 200 || status >= 300) {
+                        var err = new Error('Connector HTTP ' + status); err.status=status;
+                        try { err.code=JSON.parse(Buffer.concat(chunks).toString('utf8')).error.code; } catch(ignore) {}
+                        return reject(err);
+                    }
                     try {
                         var data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
                         if (data.api_version !== 1) throw new Error('Unsupported connector API');
@@ -63,7 +71,7 @@
             });
             request.setTimeout(15000, function () { request.destroy(); reject(new Error('Connector timeout')); });
             request.on('error', reject);
-            request.end();
+            request.end(body || undefined);
         });
     };
     Connector.prototype.capabilities = function () { return this._request('GET', 'capabilities'); };
@@ -78,6 +86,10 @@
             offset<0 || offset>1000000 || !Number.isInteger(limit) || limit<1 || limit>200)
             return Promise.reject(new Error('Invalid facet query'));
         return this._request('GET','facets?field='+encodeURIComponent(field)+'&q='+encodeURIComponent(query)+'&offset='+offset+'&limit='+limit);
+    };
+    Connector.prototype.upload = function (payload) {
+        var data = Object.assign({},payload,{target:'personal_draft'});
+        return this._request('POST','upload',data);
     };
     Connector.prototype.revoke = function () {
         var self = this;

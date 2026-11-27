@@ -5,9 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت کاتالوگ طرح‌های وکتوری</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/studioSetPanel.css">
 </head>
 <body>
     <div id="app">
+<section id="ss-panel" dir="rtl">
+  <details id="ss-details">
+    <summary>ارسال طرح به استودیو ست</summary>
+    <div class="ss-form">
+      <label>آدرس HTTPS سرور<input id="ss-origin" type="url" placeholder="https://example.com" dir="ltr"></label>
+      <button id="ss-token-page" type="button">دریافت توکن از سایت</button>
+      <label>توکن موقت<input id="ss-token" type="password" autocomplete="off" dir="ltr"></label>
+      <div class="ss-row"><button id="ss-connect">اتصال</button><button id="ss-disconnect">قطع اتصال</button></div>
+      <p id="ss-status" role="status" aria-live="polite">ابتدا به سرور متصل شوید.</p>
+      <label>نوع انتخاب<select id="ss-mode"><option value="selection">یک یا چند طرح مستقل</option><option value="family">یک گروه مادر خانواده</option></select></label>
+      <button id="ss-extract" disabled>استخراج انتخاب Illustrator</button>
+      <fieldset id="ss-review" disabled>
+        <legend>اطلاعات مشترک انتخاب‌ها</legend>
+        <label>خانواده<input id="ss-family" list="ss-family-options" placeholder="334"><datalist id="ss-family-options"></datalist></label>
+        <button id="ss-apply-family" type="button">اعمال خانواده</button>
+        <label>جستجوی محتوای کاتالوگ<input id="ss-content-search" placeholder="نام محتوا"></label>
+        <div class="ss-row"><button id="ss-search">جستجو</button><button id="ss-more">نتایج بعدی</button></div>
+        <div id="ss-facets" class="ss-row"></div>
+        <label>محتوای مشترک<input id="ss-content" placeholder="پلیوار، سبزو"></label>
+        <label>تگ معمولی مشترک<input id="ss-tags"></label>
+        <div class="ss-row"><button id="ss-apply-tags">افزودن به انتخاب‌ها</button><button id="ss-select-all">انتخاب همه قابل ویرایش</button></div>
+        <div id="ss-items"></div>
+        <p>مقصد: کاتالوگ شخصی در فضای پیش‌نویس استودیو ست؛ انتشار عمومی انجام نمی‌شود.</p>
+        <button id="ss-upload" type="button" disabled>ثبت انتخاب‌های بازبینی‌شده</button>
+        <button id="ss-clear" type="button">پاک‌کردن صف</button>
+      </fieldset>
+    </div>
+  </details>
+</section>
         <!-- Compact Header -->
         <header class="header">
             <div class="header-content">
@@ -371,5 +401,9 @@
     <script src="js/sqliteBridge-fixed.js"></script>
     <script src="js/settings-manager.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/studioSetConnector.js"></script>
+    <script src="js/studioSetSvgExport.js"></script>
+    <script src="js/studioSetBatchMetadata.js"></script>
+    <script src="js/studioSetPanel.js"></script>
 </body>
 </html>

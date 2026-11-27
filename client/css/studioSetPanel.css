@@ -1,0 +1,14 @@
+#ss-panel{padding:8px;color:inherit;border-bottom:1px solid #777;max-height:72vh;overflow:auto;flex-shrink:0}
+#ss-panel summary{cursor:pointer;font-weight:bold;padding:5px}
+#ss-panel .ss-form{display:flex;flex-direction:column;gap:7px;padding:6px}
+#ss-panel label{display:block;font-size:12px;margin:4px 0}
+#ss-panel input,#ss-panel select{display:block;width:100%;box-sizing:border-box;padding:5px;background:#eee;color:#222;border:1px solid #888;border-radius:3px}
+#ss-panel button{padding:5px 8px;border:1px solid #888;border-radius:4px;background:#454545;color:white;cursor:pointer;font-size:12px}
+#ss-panel button:disabled{opacity:.45;cursor:default}
+#ss-panel fieldset{min-width:0;border:1px solid #888;padding:7px}
+#ss-panel .ss-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+#ss-panel .ss-item{margin:7px 0;padding:7px;border:1px solid #888;border-radius:4px}
+#ss-panel .ss-item img{width:64px;height:64px;object-fit:contain;background:white}
+#ss-panel input[type=checkbox]{display:inline-block;width:auto}
+#ss-status{white-space:pre-wrap;overflow-wrap:break-word}
+#ss-panel .ss-result{font-size:12px;overflow-wrap:break-word}
