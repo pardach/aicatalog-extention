@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت کاتالوگ طرح‌های وکتوری</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/studio-publication.css">
 </head>
 <body>
     <div id="app">
@@ -13,6 +14,7 @@
             <div class="header-content">
                 <h1>📚 کاتالوگ</h1>
                 <div class="header-actions">
+                    <button id="studioOpen" class="btn btn-outline btn-compact" type="button">استودیو ست</button>
                     <button id="addSelectionBtn" class="btn btn-primary btn-compact">
                         ➕ ثبت
                     </button>
@@ -364,6 +366,54 @@
         </div>
     </div>
 
+    <section id="studioPanel" hidden dir="rtl" aria-label="ثبت طرح در استودیو ست">
+      <header class="ss-header"><strong>استودیو ست | ثبت طرح</strong><button id="ssClose" type="button">بازگشت</button></header>
+      <div class="ss-scroll">
+        <section class="ss-card">
+          <h3>۱. اتصال به حساب</h3>
+          <label>نشانی HTTPS سایت<input id="ssOrigin" dir="ltr" type="url" placeholder="https://example.com" autocomplete="off"></label>
+          <button id="ssAccount" type="button">دریافت توکن از سایت</button>
+          <label>توکن موقت<input id="ssToken" dir="ltr" type="password" autocomplete="off" spellcheck="false"></label>
+          <div class="ss-row"><button id="ssConnect" type="button">اتصال</button><button id="ssDisconnect" type="button">قطع اتصال</button></div>
+          <p id="ssAccountState">متصل نیست</p>
+        </section>
+        <fieldset id="ssReviewFields" disabled>
+          <section class="ss-card">
+            <h3>۲. انتخاب طرح از Illustrator</h3>
+            <label>ساختار انتخاب<select id="ssExtractMode"><option value="single">یک طرح (یک گروه)</option><option value="family">گروه مادر خانواده</option><option value="selection">چند طرح مستقل</option></select></label>
+            <button id="ssExtract" type="button">استخراج انتخاب فعلی</button>
+            <p id="ssCount"></p>
+          </section>
+          <section class="ss-card">
+            <h3>۳. مقصد ثبت</h3>
+            <label>نوع ثبت<select id="ssMode"><option value="standalone">طرح مستقل</option><option value="new_family">خانواده جدید</option><option value="existing_family">تکمیل خانواده موجود</option></select></label>
+            <div id="ssFamilyFields" hidden>
+              <label>شماره خانواده<input id="ssFamily" dir="ltr" inputmode="numeric" maxlength="12"></label>
+              <label id="ssFamilyNameLabel">نام خانواده (اختیاری)<input id="ssFamilyName" maxlength="200"></label>
+              <div class="ss-row"><button id="ssLookup" type="button">بررسی شماره / نام</button><button id="ssReserve" type="button">رزرو شماره</button><button id="ssRelease" type="button">آزادسازی</button></div>
+              <p id="ssClaim"></p><div id="ssMatches"></div>
+            </div>
+          </section>
+          <section class="ss-card">
+            <h3>۴. اطلاعات مشترک انتخاب‌ها</h3>
+            <label>جستجوی محتوای کاتالوگ<input id="ssFacetSearch" maxlength="100"></label>
+            <div class="ss-row"><button id="ssFacetFetch" type="button">جستجو</button><button id="ssFacetMore" type="button">بیشتر</button></div>
+            <div id="ssFacets" class="ss-chips"></div>
+            <label>محتواهای مشترک<input id="ssBulkContent" placeholder="با ویرگول جدا کنید"></label>
+            <label>تگ‌های مشترک<input id="ssBulkTags"></label>
+            <label>قدمت<select id="ssBulkAge"><option value="">بدون تغییر</option><option value="unknown">نامشخص</option><option value="new">جدید</option><option value="old">قدیمی</option></select></label>
+            <label>پرطرفدار<select id="ssBulkPopular"><option value="">بدون تغییر</option><option value="yes">بله</option><option value="no">خیر</option></select></label>
+            <label>ویژه<select id="ssBulkFeatured"><option value="">بدون تغییر</option><option value="yes">بله</option><option value="no">خیر</option></select></label>
+            <div class="ss-row"><button id="ssAll" type="button">انتخاب همه</button><button id="ssNone" type="button">لغو انتخاب</button><button id="ssApply" type="button">اعمال روی انتخاب‌ها</button></div>
+          </section>
+          <section class="ss-card"><h3>۵. بازبینی اعضا</h3><div id="ssRows"></div></section>
+          <section class="ss-card"><button id="ssPublish" class="ss-primary" type="button">بررسی نهایی و ثبت</button></section>
+        </fieldset>
+        <section class="ss-card" id="ssPending" hidden><strong>نتیجه ثبت نامشخص است</strong><p>تا روشن شدن وضعیت، ثبت تازه انجام ندهید. همان درخواست دوباره ارسال می‌شود.</p><button id="ssRetry" type="button">ارسال مجدد همان درخواست</button></section>
+        <p id="ssStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
     <!-- Scripts -->
     <script src="sql-wasm.js"></script>
     <script src="js/CSInterface.js"></script>
@@ -371,5 +421,9 @@
     <script src="js/sqliteBridge-fixed.js"></script>
     <script src="js/settings-manager.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/studioSetConnector.js"></script>
+    <script src="js/studioSetSvgExport.js"></script>
+    <script src="js/studioSetBatchMetadata.js"></script>
+    <script src="js/studioPublicationPanel.js"></script>
 </body>
 </html>

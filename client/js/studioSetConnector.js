@@ -1,6 +1,6 @@
 /* CEP 9-compatible transport. No persistent credentials, redirects or TLS bypass. */
 (function (root, factory) {
-    if (typeof module === 'object' && module.exports) {
+    if (typeof window === 'undefined' && typeof module === 'object' && module.exports) {
         module.exports = factory(require);
     } else {
         root.StudioSetConnector = factory(root.cep_node && root.cep_node.require ? root.cep_node.require : (typeof require === 'function' ? require : null));

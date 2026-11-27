@@ -1,6 +1,6 @@
 /* Pure CEP 9-compatible review model. Metadata remains local until a future authorized upload. */
 (function(root,factory){
-    if(typeof module==='object'&&module.exports) module.exports=factory();
+    if (typeof window === 'undefined' && typeof module === 'object' && module.exports) module.exports=factory();
     else root.StudioSetBatchMetadata=factory();
 }(this,function(){
     'use strict';
