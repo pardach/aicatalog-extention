@@ -4,15 +4,23 @@
   "build": "20250125",
   "compatibility": {
     "illustrator": {
-      "min": "17.0",
-      "max": "30.0",
-      "recommended": "28.0"
+      "min": "23.0",
+      "manifestMax": "99.9",
+      "tested": []
     },
     "cep": {
       "min": "9.0",
-      "recommended": "11.0"
+      "target": [
+        "9",
+        "10",
+        "11",
+        "12"
+      ]
     },
-    "os": ["win32", "darwin"],
+    "os": [
+      "win32",
+      "darwin"
+    ],
     "node": ">=14.0.0"
   },
   "features": [
@@ -48,7 +56,7 @@
     }
   },
   "debug": {
-    "enabled": true,
+    "enabled": false,
     "logLevel": "info",
     "maxLogs": 100,
     "performanceMonitoring": true,
@@ -62,7 +70,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/vector-catalog-extension.git"
+    "url": "https://github.com/pardach/aicatalog-extention.git"
   },
   "license": "MIT",
   "keywords": [

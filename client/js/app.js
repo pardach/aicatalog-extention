@@ -2223,7 +2223,7 @@ class VectorCatalogExtension {
             try {
                 const response = JSON.parse(result);
                 if (response.success) {
-                    const placedCount = response.placedCount || response.message?.match(/\d+/)?.[0] || 1;
+                    const placedCount = response.placedCount || ((typeof response.message === 'string' && response.message.match(/\d+/)) || [])[0] || 1;
                     this.updateStatus(`قرار دادن موفق - ${placedCount} آیتم`);
                     this.hideModal('placeModal');
                     this.log(`قرار دادن موفق: ${placedCount} آیتم`, 'success');
