@@ -127,6 +127,27 @@
         // Caller must keep exactly the same payload and request ID on uncertain network failure.
         return this._request('POST','publish',payload);
     };
+    Connector.prototype.publicationStatus = function (id) {
+        if(typeof id!=='string'||!/^[a-f0-9]{32}$/.test(id))return Promise.reject(new Error('Invalid request ID'));
+        return this._request('GET','publication-status?request_id='+id);
+    };
+    Connector.prototype.searchCatalog = function (filters,offset) {
+        if(!Number.isInteger(offset)||offset<0||offset>1000000)return Promise.reject(new Error('Invalid offset'));
+        var query=['offset='+offset];
+        ['q','family','kind','age','popular'].forEach(function(key){
+            if(filters&&typeof filters[key]==='string'&&filters[key].length<=200)query.push(key+'='+encodeURIComponent(filters[key]));
+        });
+        return this._request('GET','catalog?'+query.join('&'));
+    };
+    Connector.prototype.downloadSvg = function (id) {
+        if(typeof id!=='string'||!/^studio-[a-f0-9]{32}$/.test(id))return Promise.reject(new Error('Unsupported asset'));
+        return this._request('GET','download-svg?id='+id).then(function(data){
+            if(data.id!==id||typeof data.base64!=='string'||data.base64.length>1400000)throw Error('Invalid artwork response');
+            var bytes=new Buffer(data.base64,'base64');
+            if(load('crypto').createHash('sha256').update(bytes).digest('hex')!==data.file_hash)throw Error('Artwork hash mismatch');
+            return data;
+        });
+    };
     Connector.prototype.revoke = function () {
         var self = this;
         return self._request('POST', 'revoke').then(function (data) { self.clearToken(); return data; }, function (error) { self.clearToken(); throw error; });

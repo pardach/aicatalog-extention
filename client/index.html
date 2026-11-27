@@ -409,7 +409,8 @@
           <section class="ss-card"><h3>۵. بازبینی اعضا</h3><div id="ssRows"></div></section>
           <section class="ss-card"><button id="ssPublish" class="ss-primary" type="button">بررسی نهایی و ثبت</button></section>
         </fieldset>
-        <section class="ss-card" id="ssPending" hidden><strong>نتیجه ثبت نامشخص است</strong><p>تا روشن شدن وضعیت، ثبت تازه انجام ندهید. همان درخواست دوباره ارسال می‌شود.</p><button id="ssRetry" type="button">ارسال مجدد همان درخواست</button></section>
+        <section class="ss-card" id="ssCatalog" hidden><h3>جستجوی کاتالوگ سایت</h3><label>نام، شماره یا محتوا<input id="ssCatalogQuery" maxlength="200"></label><label>قدمت<select id="ssCatalogAge"><option value="">همه</option><option value="new">جدید</option><option value="old">قدیمی</option><option value="unknown">نامشخص</option></select></label><label>محبوبیت<select id="ssCatalogPopular"><option value="">همه</option><option value="yes">پرطرفدار</option><option value="no">سایر</option></select></label><div class="ss-row"><button id="ssCatalogSearch" type="button">جستجو</button><button id="ssCatalogMore" type="button">بیشتر</button></div><div id="ssCatalogResults"></div></section>
+        <section class="ss-card" id="ssPending" hidden><strong>نتیجه ثبت نامشخص است</strong><p>تا روشن شدن وضعیت، ثبت تازه انجام ندهید. همان درخواست دوباره ارسال می‌شود.</p><p id="ssPendingInfo"></p><button id="ssCheckStatus" type="button">استعلام نتیجه از سرور</button><button id="ssRetry" type="button">ارسال مجدد همان درخواست</button></section>
         <p id="ssStatus" role="status" aria-live="polite"></p>
       </div>
     </section>
@@ -424,6 +425,7 @@
     <script src="js/studioSetConnector.js"></script>
     <script src="js/studioSetSvgExport.js"></script>
     <script src="js/studioSetBatchMetadata.js"></script>
+    <script src="js/studioPublicationQueue.js"></script>
     <script src="js/studioPublicationPanel.js"></script>
 </body>
 </html>
