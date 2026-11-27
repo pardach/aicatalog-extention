@@ -145,8 +145,12 @@
         });
         return this._request('GET','catalog?'+query.join('&'));
     };
+    Connector.prototype.familyPlan = function(family) {
+        if(typeof family!=='string'||!/^[1-9][0-9]{0,8}$/.test(family))return Promise.reject(new Error('Invalid family number'));
+        return this._request('GET','family-plan?family='+encodeURIComponent(family));
+    };
     Connector.prototype.downloadSvg = function (id) {
-        if(typeof id!=='string'||!/^studio-[a-f0-9]{32}$/.test(id))return Promise.reject(new Error('Unsupported asset'));
+        if(typeof id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(id))return Promise.reject(new Error('Unsupported asset'));
         return this._request('GET','download-svg?id='+id).then(function(data){
             if(data.id!==id||typeof data.base64!=='string'||data.base64.length>1400000)throw Error('Invalid artwork response');
             var bytes=new Buffer(data.base64,'base64');

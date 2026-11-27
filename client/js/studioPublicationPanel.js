@@ -5,7 +5,9 @@ var $=function(id){return document.getElementById(id);};
 var connector=null,cap=null,rows=[],claim=null,pending=null,busy=false,facetOffset=0,facetQuery='',account=null;
 var Model=window.StudioSetBatchMetadata, Exporter=window.StudioSetSvgExport, Connector=window.StudioSetConnector;
 var cs=null,queue=null,queueError=null,accountId=null,catalogOffset=0,catalogFilters={};
-var messages={metadata_revision_conflict:'مشخصات طرح توسط کاربر دیگری تغییر کرده؛ جستجو را تازه کنید',family_number_taken:'شماره خانواده قبلاً استفاده شده است',family_name_taken:'نام خانواده تکراری است',family_role_taken:'نقش عضو قبلاً ثبت شده است',asset_name_taken:'نام فایل تکراری است',duplicate_svg:'فایل تکراری است',invalid_or_expired_reservation:'رزرو معتبر نیست یا منقضی شده است',family_not_studio_owned:'این خانواده در کاتالوگ قابل ویرایش استودیو نیست',invalid_publication:'فایل یا اطلاعات با قرارداد ثبت سازگار نیست',permission_denied:'مجوز ثبت ندارید',publication_disabled:'ثبت در سرور فعال نیست'};
+var familyPlan=null;
+var providerLabels={site_catalog:'کاتالوگ سایت',jalar_catalog:'جالر',banzoll_catalog:'بنزول',studio_catalog:'استودیو ست'};
+var messages={family_snapshot_changed:'اعضای خانواده تغییر کرده‌اند؛ دوباره بررسی و تأیید کنید',family_snapshot_required:'ابتدا خانواده را بررسی کنید',family_identity_ambiguous:'شماره یا نقش اعضای خانواده نیازمند بررسی مدیر است',family_provider_ambiguous:'این شماره در منابع ناسازگار وجود دارد',legacy_family_missing:'منبع قدیمی خانواده در دسترس نیست',legacy_bridge_disabled:'اتصال کاتالوگ قدیمی در سرور فعال نیست',family_not_found:'خانواده در کاتالوگ مشترک یافت نشد',legacy_size_unverified:'ابعاد فایل قدیمی با کاتالوگ سازگار نیست',metadata_revision_conflict:'مشخصات طرح توسط کاربر دیگری تغییر کرده؛ جستجو را تازه کنید',family_number_taken:'شماره خانواده قبلاً استفاده شده است',family_name_taken:'نام خانواده تکراری است',family_role_taken:'نقش عضو قبلاً ثبت شده است',asset_name_taken:'نام فایل تکراری است',duplicate_svg:'فایل تکراری است',invalid_or_expired_reservation:'رزرو معتبر نیست یا منقضی شده است',family_not_studio_owned:'این خانواده در کاتالوگ قابل ویرایش استودیو نیست',invalid_publication:'فایل یا اطلاعات با قرارداد ثبت سازگار نیست',permission_denied:'مجوز ثبت ندارید',publication_disabled:'ثبت در سرور فعال نیست'};
 function status(s,error){$('ssStatus').textContent=s;$('ssStatus').className=error?'ss-error':'';}
 function errorText(e){return messages[e.code]||String(e.message||e);}
 function node(tag,text){var x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;}
@@ -52,6 +54,7 @@ function familyNumber(value){
 }
 function applyDestination(){
     var mode=$('ssMode').value,key=mode==='standalone'?'':familyNumber($('ssFamily').value);
+    if(mode!=='existing_family'||(familyPlan&&familyPlan.family_key!==key))familyPlan=null;
     rows=rows.map(function(r){
         if(r.design_kind==='tool')return Model.edit(r,{family_key:''},kinds());
         return Model.edit(r,{family_key:key},kinds());
@@ -102,6 +105,15 @@ function getFacets(reset){
         facetOffset=data.next_offset;
     });
 }
+function showFamilyPlan(plan){
+    familyPlan=plan;
+    var box=$('ssMatches');
+    box.textContent='';
+    box.appendChild(node('strong','خانواده '+plan.family_key+' | '+plan.member_count+' عضو'));
+    box.appendChild(node('p','منابع: '+plan.providers.map(function(s){return providerLabels[s]||s;}).join('، ')));
+    box.appendChild(node('p','نقش‌های اشغال‌شده: '+plan.roles.join('، ')));
+    box.appendChild(node('p',plan.can_append?'افزودن عضو جدید مجاز است؛ فایل‌های قبلی تغییر نمی‌کنند.':(messages[plan.reason]||plan.reason)));
+}
 function showMatches(data){
     var box=$('ssMatches');box.textContent='';
     box.appendChild(node('p',data.family_exists?'شماره موجود است': 'شماره در نمای کاتالوگ پیدا نشد'));
@@ -142,7 +154,7 @@ function sendPending(){
     },function(e){
         // A structured definitive rejection is safe only before any ambiguous attempt.
         if(!attempt.uncertain&&[400,409,413,415].indexOf(e.status)>=0&&e.code){
-            queue.clear(attempt.payload.request_id);pending=null;throw e;
+            queue.clear(attempt.payload.request_id);pending=null;if(e.code==='family_snapshot_changed'){familyPlan=null;$('ssMatches').textContent='';}throw e;
         }
         attempt.uncertain=true;
         status('نتیجه ثبت نامشخص است. '+errorText(e)+'؛ همان درخواست را دوباره ارسال کنید.',true);
@@ -162,7 +174,7 @@ $('ssConnect').onclick=function(){task(function(){
             if(!window.confirm('حساب یا سرور تغییر کرده؛ بازبینی قبلی پاک شود؟')){c.clearToken();return;}
             rows=[];renderRows();
         }
-        if(connector)connector.clearToken();connector=c;cap=data;account=data.username;accountId=data.account_id;
+        if(connector)connector.clearToken();connector=c;cap=data;account=data.username;accountId=data.account_id;familyPlan=null;$('ssMatches').textContent='';
         catalogOffset=0;$('ssCatalogResults').textContent='';
         $('ssAccountState').textContent='متصل: '+account+(data.operations.upload?' — مجاز به ثبت':' — فقط مشاهده');
         status('اتصال برقرار شد');return getFacets(true);
@@ -181,7 +193,11 @@ $('ssExtract').onclick=function(){task(function(){
 });};
 $('ssMode').onchange=function(){applyDestination();renderRows();};
 $('ssFamily').onchange=function(){$('ssFamily').value=familyNumber($('ssFamily').value);applyDestination();renderRows();};
-$('ssLookup').onclick=function(){task(function(){return connector.checkIdentity(familyNumber($('ssFamily').value),$('ssFamilyName').value,'').then(showMatches);});};
+$('ssLookup').onclick=function(){task(function(){
+    var key=familyNumber($('ssFamily').value);
+    if($('ssMode').value==='existing_family'&&cap.operations.family_plan)return connector.familyPlan(key).then(showFamilyPlan);
+    return connector.checkIdentity(key,$('ssFamilyName').value,'').then(showMatches);
+});};
 $('ssReserve').onclick=function(){task(function(){return connector.reserveFamily(familyNumber($('ssFamily').value),$('ssFamilyName').value.trim()).then(function(data){claim=data;$('ssFamily').value=data.family_key;applyDestination();renderRows();status('شماره رزرو شد.');});});};
 $('ssRelease').onclick=function(){task(function(){return connector.releaseFamily(claim.reservation_id).then(function(){claim=null;status('رزرو آزاد شد.');});});};
 $('ssFacetFetch').onclick=function(){task(function(){return getFacets(true);});};
@@ -201,14 +217,17 @@ $('ssPublish').onclick=function(){task(function(){
     if(!cap||!cap.operations||!cap.operations.upload)throw Error('مجوز ثبت در سرور فعال نیست');
     var mode=$('ssMode').value,key=mode==='standalone'?'':familyNumber($('ssFamily').value);
     if(mode!=='standalone'&&!/^[1-9]\d{0,8}$/.test(key))throw Error('شماره خانواده معتبر وارد کنید');
+    if(mode==='existing_family'&&cap.operations.family_plan&&(!familyPlan||familyPlan.family_key!==key||!familyPlan.can_append))throw Error('ابتدا وضعیت خانواده موجود را بررسی کنید');
     if(mode==='new_family'&&(!claim||claim.family_key!==key||claim.expires_at*1000<=Date.now()))throw Error('ابتدا شماره خانواده را رزرو کنید؛ رزرو منقضی را آزاد کنید.');
     applyDestination();
     var errors=Model.validate(rows,kinds(),[]), chosen=selected();
     if(errors.length)throw Error('بازبینی طرح‌ها: '+errors.map(function(e){return 'طرح '+e.id+' '+e.code;}).join('، '));
     if(!chosen.length||chosen.length>40)throw Error('یک تا ۴۰ طرح انتخاب کنید');
     if(mode!=='standalone'&&chosen.some(function(r){return r.family_key!==key;}))throw Error('ابزار و طرح مستقل را جداگانه ثبت کنید');
+    if(mode==='existing_family'&&familyPlan&&chosen.some(function(r){return familyPlan.roles.indexOf(r.family_role)>=0;}))throw Error('نقش یکی از اعضا قبلاً ثبت شده است؛ نقش دیگری انتخاب کنید');
     var payload={request_id:connector.newPublicationId(),mode:mode,items:chosen.map(Model.payload)};
     if(key)payload.family_key=key;
+    if(mode==='existing_family'&&familyPlan)payload.family_snapshot=familyPlan.snapshot;
     if(mode==='new_family'){payload.family_name=$('ssFamilyName').value.trim();payload.reservation_id=claim.reservation_id;}
     if(!window.confirm('ثبت '+chosen.length+' طرح در کاتالوگ مشترک استودیو ست؟'))return;
     if(!queue||queueError)throw Error('صف محلی در دسترس نیست؛ ارسال انجام نشد');
@@ -245,7 +264,9 @@ function saveSvg(item){
 }
 function downloadArt(item){
     return connector.downloadSvg(item.id).then(function(data){
-        data.width_cm=Number(item.width_cm);data.height_cm=Number(item.height_cm);return data;
+        data.width_cm=Number(data.width_cm||item.width_cm);data.height_cm=Number(data.height_cm||item.height_cm);
+        if(Math.abs(data.width_cm-Number(item.width_cm))>.001||Math.abs(data.height_cm-Number(item.height_cm))>.001)throw Error('ابعاد طرح از زمان جستجو تغییر کرده است؛ دوباره جستجو کنید');
+        return data;
     });
 }
 function placeItems(items){
@@ -299,6 +320,7 @@ function search(reset){
             var el=node('article');el.className='ss-item';
             el.appendChild(node('strong',item.title||item.name||'طرح'));
             el.appendChild(node('p',(item.name||'')+' | '+(item.family_key||'مستقل')+' | '+(item.family_role||item.design_kind||'')));
+            el.appendChild(node('p','منبع: '+(providerLabels[item.source]||item.source||'طرح محلی')));
             el.appendChild(node('p',(item.content_tags||[]).join('، ')));
             el.appendChild(node('p',(item.design_age==='new'?'جدید':item.design_age==='old'?'قدیمی':'')+(item.is_curated_popular?' | پرطرفدار':'')));
             if(item.download_supported&&cap.operations.download_svg){
@@ -313,6 +335,11 @@ function search(reset){
                 el.appendChild(btn('قرار دادن روی آرت‌بورد',function(){task(function(){return placeItems([item]);});}));
                 if(item.family_key)el.appendChild(btn('دریافت خانواده کامل',function(){task(function(){return placeFamily(item.family_key);});}));
             }
+            if(item.family_key&&cap.operations.family_plan&&cap.operations.upload)el.appendChild(btn('تکمیل این خانواده',function(){task(function(){
+                if(claim||pending)throw Error('ابتدا رزرو یا درخواست قبلی را تعیین تکلیف کنید');
+                $('ssMode').value='existing_family';$('ssFamily').value=familyNumber(item.family_key);applyDestination();renderRows();
+                return connector.familyPlan(familyNumber(item.family_key)).then(function(plan){showFamilyPlan(plan);$('ssMatches').scrollIntoView();});
+            });}));
             if(item.family_key)el.appendChild(btn('مشاهده اعضای خانواده',function(){task(function(){
                 catalogOffset=0;catalogFilters={family:item.family_key};$('ssCatalogResults').textContent='';return search(false);
             });}));
