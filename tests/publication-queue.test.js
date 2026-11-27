@@ -1,0 +1,17 @@
+const fs=require('fs'),os=require('os'),path=require('path'),assert=require('assert');
+const Queue=require('../client/js/studioPublicationQueue');
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'studio-queue-test-'));
+const q=new Queue(dir);
+const attempt={origin:'https://example.com',account:'designer',accountId:1,token:'not stored',payload:{request_id:'a'.repeat(32),items:[{base64:'YQ==',file_hash:'b'.repeat(64)}]}};
+assert.strictEqual(q.read(),null);
+q.save(attempt);
+const recovered=new Queue(dir).read();
+assert.strictEqual(recovered.payload.request_id,attempt.payload.request_id);
+assert.strictEqual(recovered.uncertain,true);
+assert(!fs.readFileSync(q.file,'utf8').includes('not stored'));
+assert.throws(()=>q.save(attempt));
+assert.throws(()=>q.clear('c'.repeat(32)));
+q.clear(attempt.payload.request_id);
+assert.strictEqual(q.read(),null);
+fs.rmdirSync(dir);
+console.log('Queue persistence checks passed');

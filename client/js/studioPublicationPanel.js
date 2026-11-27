@@ -4,7 +4,7 @@
 var $=function(id){return document.getElementById(id);};
 var connector=null,cap=null,rows=[],claim=null,pending=null,busy=false,facetOffset=0,facetQuery='',account=null;
 var Model=window.StudioSetBatchMetadata, Exporter=window.StudioSetSvgExport, Connector=window.StudioSetConnector;
-var cs=null;
+var cs=null,queue=null,queueError=null,accountId=null,catalogOffset=0,catalogFilters={};
 var messages={family_number_taken:'شماره خانواده قبلاً استفاده شده است',family_name_taken:'نام خانواده تکراری است',family_role_taken:'نقش عضو قبلاً ثبت شده است',asset_name_taken:'نام فایل تکراری است',duplicate_svg:'فایل تکراری است',invalid_or_expired_reservation:'رزرو معتبر نیست یا منقضی شده است',family_not_studio_owned:'این خانواده در کاتالوگ قابل ویرایش استودیو نیست',invalid_publication:'فایل یا اطلاعات با قرارداد ثبت سازگار نیست',permission_denied:'مجوز ثبت ندارید',publication_disabled:'ثبت در سرور فعال نیست'};
 function status(s,error){$('ssStatus').textContent=s;$('ssStatus').className=error?'ss-error':'';}
 function errorText(e){return messages[e.code]||String(e.message||e);}
@@ -20,13 +20,19 @@ function setBusy(v){busy=v;sync();}
 function sync(){
     $('ssReviewFields').disabled=busy||!cap||!!pending;
     $('ssPending').hidden=!pending;
-    $('ssRetry').disabled=busy||!cap||!pending||connector.origin!==pending.origin||account!==pending.account;
+    var same=!!(cap&&connector&&pending&&connector.origin===pending.origin&&accountId===pending.accountId);
+    $('ssRetry').disabled=busy||!same;
+    $('ssCheckStatus').disabled=busy||!same||!cap.operations.publication_status;
+    $('ssPendingInfo').textContent=pending?'شناسه: '+pending.payload.request_id+' | '+pending.payload.items.length+' طرح | '+pending.account:'';
+    $('ssCatalog').hidden=!cap||!cap.operations.read_catalog;
+    $('ssCatalogSearch').disabled=busy;
+    $('ssCatalogMore').disabled=busy||catalogOffset===null;
     $('ssConnect').disabled=busy;
     $('ssClose').disabled=busy;
     $('ssDisconnect').disabled=busy;
     $('ssAccount').disabled=busy;
     $('ssOrigin').disabled=busy||!!claim||!!pending;
-    $('ssPublish').disabled=!cap||!cap.operations||!cap.operations.upload||!selected().length;
+    $('ssPublish').disabled=!!queueError||!queue||!cap||!cap.operations||!cap.operations.upload||!selected().length;
     var mode=$('ssMode').value;
     $('ssFamilyFields').hidden=mode==='standalone';
     $('ssFamilyNameLabel').hidden=mode!=='new_family';
@@ -103,17 +109,21 @@ function showMatches(data){
     if(data.total_matches>data.matches.length)box.appendChild(node('p','نتایج محدود شده‌اند.'));
     if(!claim&&$('ssMode').value==='new_family')box.appendChild(btn('پیشنهاد '+data.suggested_family,function(){$('ssFamily').value=data.suggested_family;applyDestination();renderRows();}));
 }
+function finishPending(result){
+    if(!Array.isArray(result.assets)||result.assets.length!==pending.payload.items.length){pending.uncertain=true;throw Error('پاسخ ثبت نامعتبر؛ وضعیت نامشخص است');}
+    queue.clear(pending.payload.request_id);
+    pending=null;claim=null;rows=[];renderRows();
+    status('ثبت موفق: '+result.assets.map(function(a){return a.name;}).join('، '));
+}
 function sendPending(){
     var attempt=pending;
-    if(!attempt||!connector||attempt.origin!==connector.origin||attempt.account!==account)throw Error('به همان حساب و سرور متصل شوید');
+    if(!attempt||!connector||attempt.origin!==connector.origin||attempt.accountId!==accountId)throw Error('به همان حساب و سرور متصل شوید');
     return connector.publish(attempt.payload).then(function(result){
-        if(!Array.isArray(result.assets)||result.assets.length!==attempt.payload.items.length){attempt.uncertain=true;throw Error('پاسخ ثبت نامعتبر؛ وضعیت نامشخص است');}
-        pending=null;claim=null;rows=[];renderRows();
-        status('ثبت موفق: '+result.assets.map(function(a){return a.name;}).join('، '));
+        finishPending(result);
     },function(e){
         // A structured definitive rejection is safe only before any ambiguous attempt.
         if(!attempt.uncertain&&[400,409,413,415].indexOf(e.status)>=0&&e.code){
-            pending=null;throw e;
+            queue.clear(attempt.payload.request_id);pending=null;throw e;
         }
         attempt.uncertain=true;
         status('نتیجه ثبت نامشخص است. '+errorText(e)+'؛ همان درخواست را دوباره ارسال کنید.',true);
@@ -126,8 +136,10 @@ $('ssConnect').onclick=function(){task(function(){
     var c=new Connector($('ssOrigin').value.trim()),token=$('ssToken').value.trim();$('ssToken').value='';
     c.setToken(token);
     return c.capabilities().then(function(data){
-        if((claim||pending)&&account&&data.username!==account){c.clearToken();throw Error('برای ادامه به همان حساب قبلی متصل شوید');}
-        if(connector)connector.clearToken();connector=c;cap=data;account=data.username;
+        if(!Number.isInteger(data.account_id)||data.account_id<=0){c.clearToken();throw Error('نسخه سرور برای صف پایدار مناسب نیست');}
+        if((pending&&data.account_id!==pending.accountId)||(claim&&accountId&&data.account_id!==accountId)){c.clearToken();throw Error('برای ادامه به همان حساب قبلی متصل شوید');}
+        if(connector)connector.clearToken();connector=c;cap=data;account=data.username;accountId=data.account_id;
+        catalogOffset=0;$('ssCatalogResults').textContent='';
         $('ssAccountState').textContent='متصل: '+account+(data.operations.upload?' — مجاز به ثبت':' — فقط مشاهده');
         status('اتصال برقرار شد');return getFacets(true);
     },function(e){c.clearToken();throw e;});
@@ -175,8 +187,56 @@ $('ssPublish').onclick=function(){task(function(){
     if(key)payload.family_key=key;
     if(mode==='new_family'){payload.family_name=$('ssFamilyName').value.trim();payload.reservation_id=claim.reservation_id;}
     if(!window.confirm('ثبت '+chosen.length+' طرح در کاتالوگ مشترک استودیو ست؟'))return;
-    pending={payload:payload,origin:connector.origin,account:account,uncertain:false};return sendPending();
+    if(!queue||queueError)throw Error('صف محلی در دسترس نیست؛ ارسال انجام نشد');
+    var attempt={payload:payload,origin:connector.origin,account:account,accountId:accountId,uncertain:false};
+    queue.save(attempt);pending=attempt;return sendPending();
 });};
 $('ssRetry').onclick=function(){task(sendPending);};
+$('ssCheckStatus').onclick=function(){task(function(){
+    return connector.publicationStatus(pending.payload.request_id).then(function(result){
+        if(result.state==='committed')finishPending(result);
+        else status('ثبت قطعی پیدا نشد؛ برای رفع ابهام همان درخواست را مجدداً ارسال کنید.',true);
+    });
+});};
+function saveSvg(item){
+    return connector.downloadSvg(item.id).then(function(data){
+        // Save only with the CEP native file chooser and explicit user selection.
+        if(!window.cep||!window.cep.fs||!window.cep.fs.showSaveDialogEx)throw Error('امکان ذخیره فایل در این محیط موجود نیست');
+        var result=window.cep.fs.showSaveDialogEx('ذخیره طرح SVG','',['svg'],data.name);
+        if(result.err||!result.data)return;
+        var written=window.cep.fs.writeFile(result.data,data.base64,'Base64');
+        if(written.err)throw Error('ذخیره فایل ناموفق');
+        status('فایل SVG ذخیره شد.');
+    });
+}
+function search(reset){
+    if(reset){catalogOffset=0;catalogFilters={q:$('ssCatalogQuery').value,age:$('ssCatalogAge').value,popular:$('ssCatalogPopular').value};$('ssCatalogResults').textContent='';}
+    if(catalogOffset===null)return Promise.resolve();
+    return connector.searchCatalog(catalogFilters,catalogOffset).then(function(data){
+        var box=$('ssCatalogResults');
+        if(reset)box.appendChild(node('p',data.total+' طرح'));
+        data.assets.forEach(function(item){
+            var el=node('article');el.className='ss-item';
+            el.appendChild(node('strong',item.title||item.name||'طرح'));
+            el.appendChild(node('p',(item.name||'')+' | '+(item.family_key||'مستقل')+' | '+(item.family_role||item.design_kind||'')));
+            el.appendChild(node('p',(item.content_tags||[]).join('، ')));
+            el.appendChild(node('p',(item.design_age==='new'?'جدید':item.design_age==='old'?'قدیمی':'')+(item.is_curated_popular?' | پرطرفدار':'')));
+            if(item.download_supported&&cap.operations.download_svg)el.appendChild(btn('ذخیره SVG',function(){task(function(){return saveSvg(item);});}));
+            box.appendChild(el);
+        });
+        catalogOffset=data.next_offset;
+    });
+}
+$('ssCatalogSearch').onclick=function(){task(function(){return search(true);});};
+$('ssCatalogMore').onclick=function(){task(function(){return search(false);});};
+try{
+    cs=new CSInterface();
+    var load=window.cep_node&&window.cep_node.require?window.cep_node.require:require;
+    var path=load('path'),fs=load('fs'),base=cs.getSystemPath('userData');
+    if(!base||!fs.existsSync(base))throw Error('مسیر داده کاربر در دسترس نیست');
+    queue=new window.StudioPublicationQueue(path.join(base,'PardachStudioPublication'));
+    pending=queue.read();
+    if(pending){$('ssOrigin').value=pending.origin;account=pending.account;accountId=pending.accountId;status('درخواست قبلی بازیابی شد؛ به همان حساب متصل شوید.');}
+}catch(e){queueError=e;status('صف محلی قابل استفاده نیست؛ ثبت جدید متوقف شد. '+errorText(e),true);}
 sync();
 }());
