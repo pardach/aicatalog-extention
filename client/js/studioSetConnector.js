@@ -72,6 +72,13 @@
             !Number.isInteger(limit) || limit < 1 || limit > 200) return Promise.reject(new Error('Invalid pagination'));
         return this._request('GET', 'families?offset=' + offset + '&limit=' + limit);
     };
+    Connector.prototype.facets = function (field, query, offset, limit) {
+        if (['content_tags','tags','collections','xmp_labels'].indexOf(field)<0 ||
+            typeof query!=='string' || query.length>100 || !Number.isInteger(offset) ||
+            offset<0 || offset>1000000 || !Number.isInteger(limit) || limit<1 || limit>200)
+            return Promise.reject(new Error('Invalid facet query'));
+        return this._request('GET','facets?field='+encodeURIComponent(field)+'&q='+encodeURIComponent(query)+'&offset='+offset+'&limit='+limit);
+    };
     Connector.prototype.revoke = function () {
         var self = this;
         return self._request('POST', 'revoke').then(function (data) { self.clearToken(); return data; }, function (error) { self.clearToken(); throw error; });

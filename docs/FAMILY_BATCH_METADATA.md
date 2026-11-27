@@ -1,0 +1,7 @@
+# Family selection and metadata review
+
+Three explicit modes: selection (one or several independent selected items, no group splitting), family (one parent group, each immediate pageItem is exported independently, preserving deeper nesting), symbols (existing placed instances). Family mode rejects clipped/translucent/non-normal-blend parents and hidden/locked or unsupported direct members. Real Illustrator tests must verify direct parent identity, inherited appearances, order and bounds. Parent effects beyond the checked properties remain a visual review gate.
+
+Metadata model: design_kind and family_role from capabilities, separate tags and content_tags, common family and content applied to selected rows in bulk, per-row overrides, rating, label, collection, featured. Name inference is only a suggestion requiring confirmation; family can exist without flower but duplicate flower is rejected. Tool has no family. Content examples پلیوار and سبزو are user-supplied labels, not a fixed catalog vocabulary. Fetch facets from server using connector.facets; no hardcoded list. Generated names are draft suggestions, not server identity reservations. Existing role conflict and full authoritative validation remain server upload gates.
+
+The model and family extraction are not yet wired into the production panel, nor is upload enabled. Next phase: visible review table, multi-select chips, common family, per-item type/role, thumbnail review, and authorized upload endpoint. Run node tests/batch-metadata.test.js and real host tests.

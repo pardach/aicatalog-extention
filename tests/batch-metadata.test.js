@@ -1,0 +1,18 @@
+const assert=require('assert');
+const m=require('../client/js/studioSetBatchMetadata');
+const kinds=[{key:'flower',default_family_role:'main_gol'},{key:'half_flower',default_family_role:'kap_gol'},{key:'rakab',default_family_role:'main_rakab'},{key:'tool',default_family_role:''}];
+let rows=m.create([{name:'گل',success:true},{name:'کپ گل',success:true},{name:'334r2',success:true}], 'family', kinds);
+assert.strictEqual(rows[2].family_role,'secondary_rakab');
+assert.strictEqual(rows[0].family_key,'');
+assert(m.validate(rows,kinds,[]).length>0);
+rows=m.bulk(rows,[1,2,3],{family_key:'334',content_tags:['پلیوار'],confirmed:true},kinds);
+rows=m.edit?rows.map(r=>r.id===2?m.edit(r,{content_tags:['سبزو','پلیوار']},kinds):r):rows;
+assert.deepStrictEqual(m.validate(rows,kinds,[]),[]);
+assert.deepStrictEqual(rows[1].content_tags,['سبزو','پلیوار']);
+assert.strictEqual(m.payload(rows[2]).name,'334r2.svg');
+assert(m.validate(rows,kinds,[{family_key:'334',has_flower:true}]).some(e=>e.code==='duplicate_flower'));
+const tool=m.edit(rows[0],{design_kind:'tool',confirmed:true},kinds);
+assert.strictEqual(tool.family_key,'');assert.strictEqual(tool.family_role,'');
+assert.strictEqual(m.infer('334').kind,'unknown');
+assert.deepStrictEqual(m.tags('پلیوار، سبزو, پلیوار'),['پلیوار','سبزو']);
+console.log('Batch review model checks passed');
