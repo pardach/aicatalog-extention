@@ -7,6 +7,8 @@
     var MAX_SVG=20*1024*1024, MAX_PREVIEW=2*1024*1024;
     function normalizeSvg(svg,w,h) {
         if (typeof svg!=='string' || !(w>0 && h>0 && isFinite(w) && isFinite(h))) throw Error('Invalid SVG dimensions');
+        // Strip only the standard external SVG 1.1 declaration emitted by Illustrator.
+        svg=svg.replace(/<!DOCTYPE\s+svg\s+PUBLIC\s+["']-\/\/W3C\/\/DTD SVG 1\.1\/\/EN["']\s+["']http:\/\/www\.w3\.org\/Graphics\/SVG\/1\.1\/DTD\/svg11\.dtd["']\s*>/i,'');
         var root=svg.match(/<svg\b[^>]*>/i);
         if (!root) throw Error('SVG root missing');
         var view=root[0].match(/\sviewBox\s*=\s*(["'])([^"']+)\1/i);
