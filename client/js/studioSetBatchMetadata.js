@@ -45,7 +45,7 @@
             var guess=infer(item.name);
             return {id:i+1,source:item,selected:!!item.success,title:clean(item.name),design_kind:guess.kind,
                 family_key:mode==='family'?'':guess.family, family_role:defaultRole(guess.kind,guess.member_index,kinds),
-                confirmed:false,tags:[],content_tags:[],xmp_rating:null,xmp_label:'',collection_key:'',is_featured:false};
+                confirmed:false,tags:[],content_tags:[],xmp_rating:null,xmp_label:'',collection_key:'',is_featured:false,design_age:'unknown',is_curated_popular:false};
         });
     }
     function edit(row,patch,kinds){
@@ -88,6 +88,8 @@
                 if(flowers[key2]||(existing[key2]&&existing[key2].has_flower))error('duplicate_flower');
                 flowers[key2]=true;
             }
+            if(['unknown','new','old'].indexOf(r.design_age)<0)error('invalid_design_age');
+            if(typeof r.is_curated_popular!=='boolean')error('invalid_curated_popularity');
             if(r.xmp_rating!==null&&(!Number.isInteger(r.xmp_rating)||r.xmp_rating<0||r.xmp_rating>5))error('invalid_rating');
         });
         return errors;
@@ -104,7 +106,7 @@
         return {name:name,title:row.title,design_kind:row.design_kind,family_key:row.family_key,
             family_role:row.family_role,tags:tags(row.tags),content_tags:tags(row.content_tags),
             xmp_keywords:tags(row.tags.concat(row.content_tags)),xmp_rating:row.xmp_rating,xmp_label:row.xmp_label,
-            collection_key:row.collection_key,is_featured:!!row.is_featured,width_cm:source.width_cm,height_cm:source.height_cm,
+            collection_key:row.collection_key,is_featured:!!row.is_featured,design_age:row.design_age,is_curated_popular:!!row.is_curated_popular,width_cm:source.width_cm,height_cm:source.height_cm,
             mime_type:'image/svg+xml',base64:source.svg_base64,file_hash:source.file_hash};
     }
     return {infer:infer,create:create,edit:edit,bulk:bulk,validate:validate,payload:payload,tags:tags};
