@@ -148,6 +148,11 @@
             return data;
         });
     };
+    Connector.prototype.editMetadata = function (id,revision,patch) {
+        if(!/^studio-[a-f0-9]{32}$/.test(id)||!/^[a-f0-9]{64}$/.test(revision)||!patch||typeof patch!=='object')
+            return Promise.reject(new Error('Invalid metadata revision'));
+        return this._request('POST','metadata',{id:id,revision:revision,patch:patch});
+    };
     Connector.prototype.revoke = function () {
         var self = this;
         return self._request('POST', 'revoke').then(function (data) { self.clearToken(); return data; }, function (error) { self.clearToken(); throw error; });

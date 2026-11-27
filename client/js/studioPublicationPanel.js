@@ -5,7 +5,7 @@ var $=function(id){return document.getElementById(id);};
 var connector=null,cap=null,rows=[],claim=null,pending=null,busy=false,facetOffset=0,facetQuery='',account=null;
 var Model=window.StudioSetBatchMetadata, Exporter=window.StudioSetSvgExport, Connector=window.StudioSetConnector;
 var cs=null,queue=null,queueError=null,accountId=null,catalogOffset=0,catalogFilters={};
-var messages={family_number_taken:'شماره خانواده قبلاً استفاده شده است',family_name_taken:'نام خانواده تکراری است',family_role_taken:'نقش عضو قبلاً ثبت شده است',asset_name_taken:'نام فایل تکراری است',duplicate_svg:'فایل تکراری است',invalid_or_expired_reservation:'رزرو معتبر نیست یا منقضی شده است',family_not_studio_owned:'این خانواده در کاتالوگ قابل ویرایش استودیو نیست',invalid_publication:'فایل یا اطلاعات با قرارداد ثبت سازگار نیست',permission_denied:'مجوز ثبت ندارید',publication_disabled:'ثبت در سرور فعال نیست'};
+var messages={metadata_revision_conflict:'مشخصات طرح توسط کاربر دیگری تغییر کرده؛ جستجو را تازه کنید',family_number_taken:'شماره خانواده قبلاً استفاده شده است',family_name_taken:'نام خانواده تکراری است',family_role_taken:'نقش عضو قبلاً ثبت شده است',asset_name_taken:'نام فایل تکراری است',duplicate_svg:'فایل تکراری است',invalid_or_expired_reservation:'رزرو معتبر نیست یا منقضی شده است',family_not_studio_owned:'این خانواده در کاتالوگ قابل ویرایش استودیو نیست',invalid_publication:'فایل یا اطلاعات با قرارداد ثبت سازگار نیست',permission_denied:'مجوز ثبت ندارید',publication_disabled:'ثبت در سرور فعال نیست'};
 function status(s,error){$('ssStatus').textContent=s;$('ssStatus').className=error?'ss-error':'';}
 function errorText(e){return messages[e.code]||String(e.message||e);}
 function node(tag,text){var x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;}
@@ -209,6 +209,52 @@ function saveSvg(item){
         status('فایل SVG ذخیره شد.');
     });
 }
+function downloadArt(item){
+    return connector.downloadSvg(item.id).then(function(data){
+        data.width_cm=Number(item.width_cm);data.height_cm=Number(item.height_cm);return data;
+    });
+}
+function placeItems(items){
+    if(!items.length||items.length>40||items.some(function(item){return !item.download_supported;}))throw Error('همه اعضا باید قابل دریافت باشند؛ حداکثر ۴۰ طرح');
+    var downloaded=[],total=0,chain=Promise.resolve();
+    items.forEach(function(item){chain=chain.then(function(){return downloadArt(item).then(function(data){
+        total+=Math.ceil(data.base64.length*3/4);if(total>16*1024*1024)throw Error('حجم خانواده بیش از حد مجاز است');
+        downloaded.push(data);
+    });});});
+    return chain.then(function(){
+        if(!window.confirm('قرار دادن '+downloaded.length+' طرح در آرت‌بورد فعال با اندازه اصلی؟'))return;
+        return window.StudioSetArtworkImport.importBatch(cs,downloaded).then(function(result){status(result.count+' طرح وکتوری در آرت‌بورد قرار گرفت.');});
+    });
+}
+function placeFamily(family){
+    var all=[];
+    function page(offset){
+        return connector.searchCatalog({family:family},offset).then(function(data){
+            all=all.concat(data.assets);
+            if(all.length>40||data.total>40)throw Error('خانواده بیش از ۴۰ عضو دارد');
+            if(data.next_offset!==null)return page(data.next_offset);
+        });
+    }
+    return page(0).then(function(){return placeItems(all);});
+}
+function editCard(item,el){
+    var form=node('section');form.className='ss-card';el.appendChild(form);
+    var patch={};
+    input(form,'عنوان',item.title||item.name,function(v){patch.title=v;});
+    input(form,'محتوا',(item.content_tags||[]).join('، '),function(v){patch.content_tags=Model.tags(v);});
+    input(form,'تگ',(item.tags||[]).join('، '),function(v){patch.tags=Model.tags(v);});
+    select(form,'قدمت',[['unknown','نامشخص'],['new','جدید'],['old','قدیمی']],item.design_age||'unknown',function(v){patch.design_age=v;});
+    checkbox(form,'پرطرفدار',item.is_curated_popular,function(v){patch.is_curated_popular=v;});
+    checkbox(form,'ویژه',item.is_featured,function(v){patch.is_featured=v;});
+    input(form,'کالکشن',item.collection_key,function(v){patch.collection_key=v;});
+    select(form,'امتیاز',[['','بدون امتیاز'],['0','۰'],['1','۱'],['2','۲'],['3','۳'],['4','۴'],['5','۵']],item.xmp_rating==null?'':String(item.xmp_rating),function(v){patch.xmp_rating=v===''?null:Number(v);});
+    select(form,'رنگ',[['','بدون رنگ'],['red','قرمز'],['yellow','زرد'],['green','سبز'],['blue','آبی'],['purple','بنفش']],item.xmp_label||'',function(v){patch.xmp_label=v;});
+    form.appendChild(btn('ذخیره مشخصات',function(){task(function(){
+        if(!Object.keys(patch).length)return;
+        return connector.editMetadata(item.id,item.revision,patch).then(function(){status('مشخصات ذخیره شد.');return search(true);});
+    });}));
+    form.appendChild(btn('انصراف',function(){form.parentNode.removeChild(form);}));
+}
 function search(reset){
     if(reset){catalogOffset=0;catalogFilters={q:$('ssCatalogQuery').value,age:$('ssCatalogAge').value,popular:$('ssCatalogPopular').value};$('ssCatalogResults').textContent='';}
     if(catalogOffset===null)return Promise.resolve();
@@ -221,7 +267,25 @@ function search(reset){
             el.appendChild(node('p',(item.name||'')+' | '+(item.family_key||'مستقل')+' | '+(item.family_role||item.design_kind||'')));
             el.appendChild(node('p',(item.content_tags||[]).join('، ')));
             el.appendChild(node('p',(item.design_age==='new'?'جدید':item.design_age==='old'?'قدیمی':'')+(item.is_curated_popular?' | پرطرفدار':'')));
-            if(item.download_supported&&cap.operations.download_svg)el.appendChild(btn('ذخیره SVG',function(){task(function(){return saveSvg(item);});}));
+            if(item.download_supported&&cap.operations.download_svg){
+                el.appendChild(btn('پیش‌نمایش طرح',function(){task(function(){
+                    return connector.downloadSvg(item.id).then(function(data){
+                        // SVG image context only; never insert markup into DOM.
+                        var img=node('img');img.className='ss-thumb';img.alt='پیش‌نمایش طرح';img.src='data:image/svg+xml;base64,'+data.base64;
+                        el.insertBefore(img,el.firstChild);
+                    });
+                });}));
+                el.appendChild(btn('ذخیره SVG',function(){task(function(){return saveSvg(item);});}));
+                el.appendChild(btn('قرار دادن روی آرت‌بورد',function(){task(function(){return placeItems([item]);});}));
+                if(item.family_key)el.appendChild(btn('دریافت خانواده کامل',function(){task(function(){return placeFamily(item.family_key);});}));
+            }
+            if(item.family_key)el.appendChild(btn('مشاهده اعضای خانواده',function(){task(function(){
+                catalogOffset=0;catalogFilters={family:item.family_key};$('ssCatalogResults').textContent='';return search(false);
+            });}));
+            if(item.revision&&cap.operations.edit)el.appendChild(btn('ویرایش مشخصات',function(){
+                if(busy)return;
+                if(!el.querySelector('.ss-card'))editCard(item,el);
+            }));
             box.appendChild(el);
         });
         catalogOffset=data.next_offset;
