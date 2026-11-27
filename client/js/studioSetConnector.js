@@ -33,6 +33,7 @@
         return new Promise(function (resolve, reject) {
             if (!self.token) return reject(new Error('Connector token required'));
             var body = payload === undefined ? null : JSON.stringify(payload);
+            if (body !== null && Buffer.byteLength(body,'utf8') > 24*1024*1024) return reject(new Error('Publication request too large'));
             var headers = {Authorization: 'Bearer ' + self.token, Accept: 'application/json'};
             if (body !== null) { headers['Content-Type']='application/json'; headers['Content-Length']=Buffer.byteLength(body,'utf8'); }
             var request = self.https.request({
@@ -72,7 +73,7 @@
                     } catch (err) { reject(err); }
                 });
             });
-            request.setTimeout(15000, function () { request.destroy(); reject(new Error('Connector timeout')); });
+            request.setTimeout(path === 'publish' ? 120000 : 15000, function () { request.destroy(); reject(new Error('Connector timeout')); });
             request.on('error', reject);
             if (body !== null) request.write(body,'utf8');
             request.end();
@@ -106,6 +107,25 @@
         if (typeof reservationId !== 'string' || !reservationId || reservationId.length>100)
             return Promise.reject(new Error('Invalid reservation ID'));
         return this._request('POST','family-reservations/release',{reservation_id:reservationId});
+    };
+    Connector.prototype.newPublicationId = function () {
+        return load('crypto').randomBytes(16).toString('hex');
+    };
+    Connector.prototype.publish = function (payload) {
+        if (!payload || typeof payload.request_id !== 'string' || !/^[a-f0-9]{32}$/.test(payload.request_id) ||
+            ['new_family','existing_family','standalone'].indexOf(payload.mode)<0 ||
+            !Array.isArray(payload.items) || !payload.items.length || payload.items.length>40)
+            return Promise.reject(new Error('Invalid publication batch'));
+        var bytes=0;
+        for(var i=0;i<payload.items.length;i++){
+            var item=payload.items[i];
+            if (!item || typeof item.base64!=='string' || !/^[a-f0-9]{64}$/.test(item.file_hash || ''))
+                return Promise.reject(new Error('Invalid artwork payload'));
+            bytes+=Buffer.byteLength(item.base64,'base64');
+        }
+        if(bytes>16*1024*1024)return Promise.reject(new Error('Publication batch exceeds 16 MiB'));
+        // Caller must keep exactly the same payload and request ID on uncertain network failure.
+        return this._request('POST','publish',payload);
     };
     Connector.prototype.revoke = function () {
         var self = this;
