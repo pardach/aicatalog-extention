@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('assert'),path=require('path');
+const root=path.join(__dirname,'..');
+const panel=fs.readFileSync(path.join(root,'client/js/studioPublicationPanel.js'),'utf8');
+const bridge=fs.readFileSync(path.join(root,'client/js/studioSetArtworkImport.js'),'utf8');
+const host=fs.readFileSync(path.join(root,'host/studioSetArtworkImport.jsx'),'utf8');
+assert(panel.includes('connector.searchCatalog({family:family},offset)'));
+assert(panel.includes('connector.editMetadata(item.id,item.revision,patch)'));
+assert(!panel.includes('innerHTML'));
+assert(bridge.includes("createHash('sha256')"));
+assert(host.includes('root.remove()'));
+assert(host.includes('Math.abs(box.w-entry.width_pt)'));
+assert(!host.includes('member.resize'));
+console.log('Roundtrip static contracts passed');
