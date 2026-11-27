@@ -127,6 +127,12 @@
         // Caller must keep exactly the same payload and request ID on uncertain network failure.
         return this._request('POST','publish',payload);
     };
+    Connector.prototype.cancelPublication = function(id,reservationId) {
+        if(typeof id!=='string'||!/^[a-f0-9]{32}$/.test(id)||
+           typeof reservationId!=='string'||reservationId.length>100)
+            return Promise.reject(new Error('Invalid cancellation'));
+        return this._request('POST','cancel-publication',{request_id:id,reservation_id:reservationId});
+    };
     Connector.prototype.publicationStatus = function (id) {
         if(typeof id!=='string'||!/^[a-f0-9]{32}$/.test(id))return Promise.reject(new Error('Invalid request ID'));
         return this._request('GET','publication-status?request_id='+id);
