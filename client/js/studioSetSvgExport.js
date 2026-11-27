@@ -1,6 +1,6 @@
 /* CEP 9-compatible extraction bridge. SVG dimensions are explicit physical units. */
 (function(root,factory) {
-    if (typeof module === 'object' && module.exports) module.exports=factory(require);
+    if (typeof window === 'undefined' && typeof module === 'object' && module.exports) module.exports=factory(require);
     else root.StudioSetSvgExport=factory(root.cep_node && root.cep_node.require ? root.cep_node.require : (typeof require==='function' ? require : null));
 }(this,function(load) {
     'use strict';
