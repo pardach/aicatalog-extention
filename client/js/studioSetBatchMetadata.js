@@ -12,7 +12,7 @@
     function familyKey(value){return clean(value).toLowerCase().replace(/^family\s*[:=]\s*/,'').replace(/^f(?=\d+$)/,'').replace(/[^a-z0-9_-]+/g,'-').replace(/^[-_]+|[-_]+$/g,'');}
     function tags(value){
         var input=Array.isArray(value)?value:[value],out=[],seen={};
-        input.forEach(function(v){clean(v).split(/[,،;\n]+/).forEach(function(t){
+        input.forEach(function(v){String(v==null?'':v).split(/[,،;\n]+/).forEach(function(t){
             t=clean(t);var k='$'+t.toLowerCase();if(t&&!seen[k]){seen[k]=true;out.push(t);}
         });});return out;
     }
@@ -44,7 +44,7 @@
         return items.map(function(item,i){
             var guess=infer(item.name);
             return {id:i+1,source:item,selected:!!item.success,title:clean(item.name),design_kind:guess.kind,
-                family_key:mode==='family'?'':guess.family, family_role:defaultRole(guess.kind,guess.member_index,kinds),
+                family_key:mode==='family'?'':guess.family, inferred_member_index:guess.member_index, family_role:defaultRole(guess.kind,guess.member_index,kinds),
                 confirmed:false,tags:[],content_tags:[],xmp_rating:null,xmp_label:'',collection_key:'',is_featured:false,design_age:'unknown',is_curated_popular:false};
         });
     }
@@ -56,8 +56,8 @@
         if(patch.design_kind!==undefined&&patch.design_kind!==row.design_kind&&patch.family_role===undefined)next.family_role=defaultRole(next.design_kind,null,kinds);
         if(next.design_kind==='tool'){next.family_key='';next.family_role='';}
         if(!next.family_key)next.family_role='';
-        else if(!next.family_role)next.family_role=defaultRole(next.design_kind,null,kinds);
-        if(patch.design_kind!==undefined&&patch.confirmed===undefined)next.confirmed=false;
+        else if(!next.family_role)next.family_role=defaultRole(next.design_kind,next.design_kind===row.design_kind?next.inferred_member_index:null,kinds);
+        if((patch.design_kind!==undefined||patch.family_role!==undefined)&&patch.confirmed===undefined)next.confirmed=false;
         return next;
     }
     function bulk(rows,ids,patch,kinds,tagMode,contentMode){

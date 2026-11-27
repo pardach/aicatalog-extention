@@ -125,7 +125,7 @@ var StudioSetSvgHost = (function () {
                 items.push({item:item,symbolName:names[i]});
             }
         } else return json({success:false,error:"Unknown extraction mode"});
-        if (items.length>100) return json({success:false,error:"Maximum 100 designs per batch"});
+        if (items.length>40) return json({success:false,error:"Maximum 40 designs per batch"});
         for (i=0;i<items.length;i++) {
             if (!items[i].item) results.push({index:i+1,name:items[i].symbolName,success:false,error:"No placed symbol instance; place at intended size and select it"});
             else results.push(one(source,items[i].item,folder,i+1,items[i].symbolName));

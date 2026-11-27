@@ -8,7 +8,7 @@
     "dev": "echo 'For development, copy the extension folder to Adobe CEP extensions directory'",
     "package": "echo 'Package the extension for distribution'",
     "install:win": "install.bat",
-    "test": "node tests/compatibility.test.js",
+    "test": "node tests/run-all.js",
     "lint": "eslint js/*.js --fix || echo 'ESLint not installed'",
     "docs": "jsdoc js/*.js -d docs/api || echo 'JSDoc not installed'"
   },
