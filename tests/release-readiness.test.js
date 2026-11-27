@@ -1,0 +1,12 @@
+const assert=require('assert');
+const m=require('../client/js/studioSetBatchMetadata');
+const kinds=[{key:'rakab',default_family_role:'main_rakab'}];
+let row=m.create([{name:'334r2',success:true}],'family',kinds)[0];
+row=m.edit(row,{family_key:''},kinds);
+row=m.edit(row,{family_key:'334'},kinds);
+assert.strictEqual(row.family_role,'secondary_rakab');
+assert.deepStrictEqual(m.tags('سبزو\nپلیوار'),['سبزو','پلیوار']);
+row=m.edit(row,{confirmed:true},kinds);
+row=m.edit(row,{family_role:'main_rakab'},kinds);
+assert.strictEqual(row.confirmed,false);
+console.log('Release regression checks passed');

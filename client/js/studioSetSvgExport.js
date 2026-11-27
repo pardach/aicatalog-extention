@@ -4,7 +4,7 @@
     else root.StudioSetSvgExport=factory(root.cep_node && root.cep_node.require ? root.cep_node.require : (typeof require==='function' ? require : null));
 }(this,function(load) {
     'use strict';
-    var MAX_SVG=20*1024*1024, MAX_PREVIEW=2*1024*1024;
+    var MAX_SVG=16*1024*1024, MAX_PREVIEW=2*1024*1024, MAX_BATCH=16*1024*1024, MAX_PREVIEWS=8*1024*1024;
     function normalizeSvg(svg,w,h) {
         if (typeof svg!=='string' || !(w>0 && h>0 && isFinite(w) && isFinite(h))) throw Error('Invalid SVG dimensions');
         var root=svg.match(/<svg\b[^>]*>/i);
@@ -52,6 +52,7 @@
                     try {
                         var result=JSON.parse(raw);
                         if (!result.success || !Array.isArray(result.items) || result.items.length>100) throw Error(result.error||'Invalid host response');
+                        var totalBytes=0,totalPreviews=0;
                         result.items.forEach(function(item,i) {
                             if (!item.success) return;
                             try {
@@ -61,7 +62,8 @@
                                     Math.abs(item.height_cm-item.height_pt*2.54/72)>1e-7) throw Error('Invalid unit conversion');
                                 var svg=normalizeSvg(readBounded(fs,path.join(folder,item.svg),MAX_SVG).toString('utf8'),item.width_cm,item.height_cm);
                                 var bytes=new Buffer(svg,'utf8');
-                                if (bytes.length>MAX_SVG) throw Error('SVG exceeds size limit');
+                                if (bytes.length>MAX_SVG || totalBytes+bytes.length>MAX_BATCH) throw Error('SVG batch exceeds 16 MiB; extract a smaller batch');
+                                totalBytes+=bytes.length;
                                 item.svg_base64=bytes.toString('base64');
                                 item.file_hash=crypto.createHash('sha256').update(bytes).digest('hex');
                                 item.mime_type='image/svg+xml';
@@ -69,7 +71,9 @@
                                 if (item.preview) {
                                     try {
                                         if (item.preview!==prefix+'.png') throw Error('Unexpected preview filename');
-                                        item.preview_base64=readBounded(fs,path.join(folder,item.preview),MAX_PREVIEW).toString('base64');
+                                        var previewBytes=readBounded(fs,path.join(folder,item.preview),MAX_PREVIEW);
+                                        if(totalPreviews+previewBytes.length>MAX_PREVIEWS)throw Error('Preview batch limit');
+                                        totalPreviews+=previewBytes.length;item.preview_base64=previewBytes.toString('base64');
                                     } catch(e) { item.warnings.push('Preview unavailable'); }
                                 }
                             } catch(e) { item.success=false; item.error=e.message; delete item.svg_base64; delete item.file_hash; }

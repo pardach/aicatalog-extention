@@ -15,7 +15,7 @@ try {
     foreach ($entry in @('CSXS','client','host','icons','VERSION.json')) {
         Copy-Item -LiteralPath (Join-Path $root $entry) -Destination $stage -Recurse -Force
     }
-    foreach ($entry in @('CSXS\manifest.xml','client\index.html','client\sql-wasm.js','client\sql-wasm.wasm','host\script.jsx','host\addSymbol.jsx','icons\normal.png')) {
+    foreach ($entry in @('CSXS\manifest.xml','client\index.html','client\sql-wasm.js','client\sql-wasm.wasm','host\script.jsx','host\addSymbol.jsx','icons\normal.png','client\js\studioPublicationPanel.js','client\js\studioPublicationQueue.js','client\js\studioSetConnector.js','client\js\studioSetBatchMetadata.js','client\js\studioSetSvgExport.js','client\js\studioSetArtworkImport.js','host\studioSetSvgExport.jsx','host\studioSetArtworkImport.jsx','client\css\studio-publication.css')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $entry) -PathType Leaf)) { throw "Missing payload: $entry" }
     }
     [xml]$manifest = Get-Content -LiteralPath (Join-Path $stage 'CSXS\manifest.xml') -Raw -Encoding UTF8
