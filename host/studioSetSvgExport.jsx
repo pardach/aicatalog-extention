@@ -95,6 +95,24 @@ var StudioSetSvgHost = (function () {
             var selection = source.selection;
             if (!selection || typeof selection.length !== "number" || !selection.length) return json({success:false,error:"Select artwork first"});
             for (i=0;i<selection.length;i++) items.push({item:selection[i]});
+        } else if (mode === "family") {
+            var selection = source.selection;
+            if (!selection || selection.length !== 1 || selection[0].typename !== "GroupItem")
+                return json({success:false,error:"Select exactly one parent family group"});
+            var parent = selection[0];
+            if (parent.clipped || parent.opacity !== 100 || parent.blendingMode !== BlendModes.NORMAL)
+                return json({success:false,error:"Family parent has clipping, opacity or blending; resolve its appearance before splitting"});
+            for (i=0;i<parent.pageItems.length;i++) {
+                var child=parent.pageItems[i];
+                if (child.parent !== parent) continue;
+                // Do not recursively split member groups or silently drop direct paths.
+                if (child.hidden || child.locked)
+                    return json({success:false,error:"Family contains a hidden or locked direct member; review the parent group"});
+                if (child.typename !== "GroupItem" && child.typename !== "CompoundPathItem" && child.typename !== "SymbolItem" && child.typename !== "PathItem")
+                    return json({success:false,error:"Unsupported direct family member: "+child.typename});
+                items.push({item:child});
+            }
+            if (!items.length) return json({success:false,error:"Family group has no direct members"});
         } else if (mode === "symbols") {
             if (!(names instanceof Array) || !names.length) return json({success:false,error:"Select symbol names"});
             // Only existing instances can be duplicated safely without mutating

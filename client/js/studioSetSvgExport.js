@@ -26,7 +26,7 @@
     function exportBatch(cs,mode,names) {
         if (!load) return Promise.reject(Error('CEP Node runtime required'));
         if (!cs || typeof cs.evalScript!=='function') return Promise.reject(Error('Illustrator bridge required'));
-        if (mode!=='selection' && mode!=='symbols') return Promise.reject(Error('Invalid extraction mode'));
+        if (mode!=='selection' && mode!=='symbols' && mode!=='family') return Promise.reject(Error('Invalid extraction mode'));
         names=names||[];
         if (!Array.isArray(names) || names.length>100 || !names.every(function(n){return typeof n==='string' && n.length<=256;})) return Promise.reject(Error('Invalid symbol names'));
         var fs=load('fs'), path=load('path'), os=load('os'), crypto=load('crypto');
